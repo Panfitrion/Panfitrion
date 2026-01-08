@@ -2,28 +2,81 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Debug Pedidos</title>
+  <title>Dashboard de Pedidos</title>
+  <style>
+    body { font-family: sans-serif; background: #f5f5f5; }
+    .tarjeta-dia {
+      background: white;
+      margin: 1rem;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .tarjeta-dia h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    .pedido {
+      padding: 0.25rem 0;
+      border-bottom: 1px solid #eee;
+    }
+    .pedido:last-child { border-bottom: none; }
+  </style>
 </head>
 <body>
-  <h1>Debug de pedidos</h1>
-  <p>Abre la consola del navegador (Cmd+Opt+I → pestaña Console) para ver los resultados.</p>
+  <h1>Pedidos por fecha</h1>
+  <div id="contenedor-dias"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://pqphzdodpassomggthid.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcGh6ZG9kcGFzc29tZ2d0aGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1ODMxMTIsImV4cCI6MjA4MzE1OTExMn0.mQNeavAOItO-wTgfGVac-z91baYxsa6866HpBOZy3nM"; // reemplaza con tu anon key
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcGh6ZG9kcGFzc29tZ2d0aGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1ODMxMTIsImV4cCI6MjA4MzE1OTExMn0.mQNeavAOItO-wTgfGVac-z91baYxsa6866HpBOZy3nM";
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function agruparPorFecha(pedidos) {
+      const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
+      const grupos = {};
+
+      pedidos.forEach(p => {
+        const fecha = new Date(p.fecha_pedido);
+        const clave = fecha.toLocaleDateString('es-MX', opciones); 
+        if (!grupos[clave]) grupos[clave] = [];
+        grupos[clave].push(p);
+      });
+
+      return grupos;
+    }
 
     async function cargarPedidos() {
-      const { data, error } = await supabase
+      const { data: pedidos, error } = await client
         .from("pedidos")
-        .select("*")
+        .select("id,cafeterias_id,sucursal,producto,cantidad,fecha_pedido,notas,cafeterias(nombre)")
         .order("fecha_pedido",{ascending:true});
 
       if (error) {
         console.error("Error en la consulta:", error);
-      } else {
-        console.log("Pedidos recibidos:", data);
+        return;
+      }
+
+      console.log("Pedidos recibidos:", pedidos);
+
+      const pedidosPorFecha = agruparPorFecha(pedidos);
+      const contenedor = document.getElementById("contenedor-dias");
+      contenedor.innerHTML = "";
+
+      for (const fecha in pedidosPorFecha) {
+        const tarjeta = document.createElement("div");
+        tarjeta.classList.add("tarjeta-dia");
+        tarjeta.innerHTML = `<h3>${fecha}</h3>`;
+
+        pedidosPorFecha[fecha].forEach(p => {
+          const item = document.createElement("div");
+          item.classList.add("pedido");
+          item.textContent = `${p.cafeterias?.nombre || "?"} - ${p.sucursal}: ${p.producto} x${p.cantidad}`;
+          tarjeta.appendChild(item);
+        });
+
+        contenedor.appendChild(tarjeta);
       }
     }
 
