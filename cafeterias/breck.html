@@ -71,7 +71,7 @@ PRODUCTOS.forEach(prod=>{
     const label=document.createElement("label");
     label.textContent=suc;
     const inp=document.createElement("input");
-    inp.type="number"; inp.min=0; inp.value=0;
+    inp.type="number"; inp.min=0;
     inp.dataset.producto=prod; inp.dataset.sucursal=suc;
     wrap.appendChild(label); wrap.appendChild(inp);
     sucInputs.appendChild(wrap);
