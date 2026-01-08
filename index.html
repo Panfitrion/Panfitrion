@@ -241,7 +241,7 @@
           const total = pedidos.reduce((acc, x) => acc + (Number(x.cantidad) || 0), 0);
           const card = document.createElement("div");
           card.className = "cafeteria-card";
-          card.innerHTML = `<div><strong>${nombre}</strong><div class="muted">${pedidos.length} pedido(s)</div></div><div class="muted">Total: ${total}</div>`;
+          card.innerHTML = `<div><strong>${nombre}</strong><div class="muted">${pedidos.length} fila(s) en tabla</div></div><div class="muted">Total piezas: ${total}</div>`;
           card.onclick = () => openPedidosModal(nombre, dayTitle, pedidos);
           modalCafBody.appendChild(card);
         });
@@ -273,6 +273,7 @@
           if (!byPedido.has(id)) {
             byPedido.set(id, { sucursal: p.sucursal, fecha_registro: p.fecha_registro, productos: [] });
           }
+          // Si la tabla guarda cada producto como fila separada, agrupamos aquí
           byPedido.get(id).productos.push({ nombre: p.producto, cantidad: p.cantidad });
         });
 
