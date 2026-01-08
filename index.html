@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Dashboard de Pedidos — Navegación semanal</title>
+  <title>Dashboard de Pedidos — 8 días, navegación semanal</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root{
@@ -89,8 +89,8 @@
 </head>
 <body>
   <header>
-    <h1>Pedidos — vista semanal (6 tarjetas grandes, sin domingos)</h1>
-    <div class="sub">Navega por semanas completas; cada tarjeta muestra un día (hoy + 5 siguientes) y se ocultan domingos</div>
+    <h1>Pedidos — vista semanal ampliada (8 tarjetas grandes, sin domingos)</h1>
+    <div class="sub">Navega por semanas completas; cada tarjeta muestra un día (base + 7 siguientes) y se ocultan domingos</div>
   </header>
 
   <div class="nav" role="navigation" aria-label="Navegación de semanas">
@@ -176,21 +176,21 @@
       }
     }
 
-    // --- Construir 6 días a partir de baseDate, saltando domingos ---
-    function buildSixDays(startDate) {
+    // --- Construir 8 días a partir de baseDate, saltando domingos ---
+    function buildEightDays(startDate) {
       const days = [];
       let cursor = resetToLocalMidnight(startDate);
-      while (days.length < 6) {
+      while (days.length < 8) {
         if (cursor.getDay() !== 0) days.push(new Date(cursor));
         cursor = addDays(cursor, 1);
       }
       return days;
     }
 
-    // --- Renderizar tarjetas grandes ---
-    function renderSixCards() {
+    // --- Renderizar tarjetas grandes (8) ---
+    function renderEightCards() {
       const contenedor = document.getElementById("contenedor-dias");
-      const days = buildSixDays(baseDate);
+      const days = buildEightDays(baseDate);
       contenedor.innerHTML = "";
 
       days.forEach(day => {
@@ -249,7 +249,7 @@
       modalCaf.classList.add("show");
     }
 
-    // --- Modal pedidos por cafetería ---
+    // --- Modal pedidos por cafetería (agrupa productos por pedido id) ---
     const modalPed = document.getElementById("modal-pedidos");
     const modalPedContent = document.getElementById("modal-pedidos-content");
     const modalPedTitle = document.getElementById("modal-pedidos-title");
@@ -265,11 +265,25 @@
         modalPedBody.innerHTML = "<p class='muted'>Sin pedidos.</p>";
       } else {
         modalPedContent.classList.add("green");
+
+        // Agrupar por id de pedido: cada pedido puede tener varias filas (productos)
+        const byPedido = new Map();
         pedidosCafe.forEach(p => {
-          const fechaReg = p.fecha_registro ? parseDateFromDateString(p.fecha_registro).toLocaleDateString('es-MX', { day:'numeric', month:'long', year:'numeric' }) : "sin registro";
+          const id = p.id ?? Math.random().toString(36).slice(2,9); // fallback si no hay id
+          if (!byPedido.has(id)) {
+            byPedido.set(id, { sucursal: p.sucursal, fecha_registro: p.fecha_registro, productos: [] });
+          }
+          byPedido.get(id).productos.push({ nombre: p.producto, cantidad: p.cantidad });
+        });
+
+        byPedido.forEach((pedido, id) => {
+          const fechaReg = pedido.fecha_registro ? parseDateFromDateString(pedido.fecha_registro).toLocaleDateString('es-MX', { day:'numeric', month:'long', year:'numeric' }) : "sin registro";
+          const productosText = pedido.productos.map(x => `${x.nombre} x${x.cantidad}`).join(", ");
           const item = document.createElement("div");
           item.className = "pedido";
-          item.innerHTML = `<div><strong>${p.producto}</strong> — ${p.sucursal || ''}</div><div class="muted">${p.cantidad || 0} unidad(es) • registrado el ${fechaReg}</div>`;
+          item.innerHTML = `<div><strong>Pedido #${id}</strong> — ${pedido.sucursal || ''}</div>
+                            <div class="muted">Productos: ${productosText}</div>
+                            <div class="small">Registrado el ${fechaReg}</div>`;
           modalPedBody.appendChild(item);
         });
       }
@@ -287,31 +301,31 @@
       baseDate = addDays(baseDate, -7);
       // si baseDate cae domingo, ajusta al día anterior (evitar iniciar en domingo)
       if (baseDate.getDay() === 0) baseDate = addDays(baseDate, -1);
-      renderSixCards();
+      renderEightCards();
     };
     document.getElementById("next").onclick = () => {
       baseDate = addDays(baseDate, 7);
       if (baseDate.getDay() === 0) baseDate = addDays(baseDate, 1);
-      renderSixCards();
+      renderEightCards();
     };
     document.getElementById("today").onclick = () => {
       baseDate = resetToLocalMidnight(new Date());
       if (baseDate.getDay() === 0) baseDate = addDays(baseDate, 1);
-      renderSixCards();
+      renderEightCards();
     };
 
     // --- Realtime: escuchar INSERT/UPDATE/DELETE y recargar cache + render ---
     function setupRealtime() {
       client
-        .channel('realtime-pedidos-weekly')
+        .channel('realtime-pedidos-8days')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, () => {
-          loadPedidos().then(renderSixCards);
+          loadPedidos().then(renderEightCards);
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pedidos' }, () => {
-          loadPedidos().then(renderSixCards);
+          loadPedidos().then(renderEightCards);
         })
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'pedidos' }, () => {
-          loadPedidos().then(renderSixCards);
+          loadPedidos().then(renderEightCards);
         })
         .subscribe();
     }
@@ -319,7 +333,7 @@
     // --- Inicialización ---
     (async function init() {
       await loadPedidos();
-      renderSixCards();
+      renderEightCards();
       setupRealtime();
     })();
   </script>
