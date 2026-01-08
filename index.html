@@ -266,10 +266,10 @@
   } else {
     modalPedContent.classList.add("green");
 
-    // Agrupar por combinación fecha_pedido + cafetería
+    // Agrupar por combinación fecha_pedido + cafetería + sucursal
     const grouped = {};
     pedidosCafe.forEach(p => {
-      const key = `${p.fecha_pedido}_${nombreCafe}`;
+      const key = `${p.fecha_pedido}_${p.cafeterias?.nombre}_${p.sucursal}`;
       if (!grouped[key]) {
         grouped[key] = { sucursal: p.sucursal, productos: [] };
       }
@@ -281,7 +281,7 @@
       const item = document.createElement("div");
       item.className = "pedido";
       item.innerHTML = `
-        <div><strong>${pedido.sucursal || ''}</strong></div>
+        <div><strong>Sucursal: ${pedido.sucursal || ''}</strong></div>
         <div class="muted">Productos: ${productosText}</div>
       `;
       modalPedBody.appendChild(item);
@@ -289,6 +289,7 @@
   }
   modalPed.classList.add("show");
 }
+
 
 
     // Cerrar modales al click fuera
