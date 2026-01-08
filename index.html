@@ -1,0 +1,317 @@
+index.html
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Pedidos</title>
+<style>
+:root{ --accent:#2c3e50; --ok:#27ae60; --muted:#666; --bg:#f8f8f8; }
+*{box-sizing:border-box}
+body{ font-family:Arial, sans-serif; margin:0; padding:18px; background:var(--bg); color:#222; -webkit-font-smoothing:antialiased; }
+h1{ text-align:center; color:var(--accent); margin-bottom:12px; font-size:22px; }
+
+/* Controles */
+.controls{ text-align:center; margin-bottom:12px; }
+button{ padding:10px 14px; margin:0 8px; border-radius:10px; border:none; background:var(--accent); color:#fff; cursor:pointer; font-size:15px; }
+
+/* Grid días */
+.days{ display:grid; gap:14px; grid-template-columns: repeat(3,1fr); max-width:1100px; margin:0 auto; }
+.day-card{ background:#fff; border-radius:12px; padding:18px; text-align:center; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,0.06); transition:transform .12s; }
+.day-card:hover{ transform:translateY(-6px); }
+.day-card.verde{ background:var(--ok); color:#fff; }
+
+/* Modal overlay */
+.modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); align-items:center; justify-content:center; padding:18px; z-index:1000; }
+.modal.open{ display:flex; }
+.modal-content{ background:#fff; border-radius:12px; width:100%; max-width:920px; max-height:88vh; overflow:auto; padding:14px; }
+
+/* Modal 1: cafeterías (tarjetas) */
+.caf-list{ display:flex; gap:16px; flex-wrap:wrap; justify-content:flex-start; padding-top:8px; }
+.caf-card{ background:#fafafa; border-radius:12px; padding:18px; min-width:220px; max-width:320px; box-shadow:0 8px 24px rgba(0,0,0,0.06); cursor:pointer; border:1px solid #eee; display:flex; flex-direction:column; gap:8px; transition:transform .12s ease; }
+.caf-card:hover{ transform:translateY(-6px); }
+.caf-card h4{ margin:0; font-size:18px; color:var(--accent); }
+.caf-card p{ margin:0; font-size:14px; color:var(--muted); }
+
+/* Modal 2: detalle pedido */
+.detalle { margin-top:8px; }
+.detalle h3{ margin:6px 0; color:var(--accent); font-size:16px; }
+.detalle ul{ list-style:none; padding:0; margin:0; }
+.detalle li{ padding:8px 0; border-bottom:1px solid #f0f0f0; font-size:14px; }
+
+/* Botones de acción dentro del modal */
+.modal-actions{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.btn-secondary{ background:#eee; color:#222; padding:8px 12px; border-radius:8px; border:none; cursor:pointer; }
+.btn-primary{ background:var(--accent); color:#fff; padding:8px 12px; border-radius:8px; border:none; cursor:pointer; }
+
+/* Close */
+.close{ float:right; font-size:20px; cursor:pointer; border:none; background:transparent; }
+
+/* Debug (opcional) */
+.debug{ font-family:monospace; font-size:12px; background:#fff; padding:8px; border-radius:8px; margin-top:12px; max-height:120px; overflow:auto; border:1px solid #eee; display:none; }
+
+/* Responsive */
+@media (max-width:900px){ .days{ grid-template-columns: repeat(2,1fr); } .caf-card{ min-width:180px; max-width:260px; } }
+@media (max-width:560px){ .days{ grid-template-columns: 1fr; } .caf-card{ min-width:140px; max-width:100%; padding:14px; } .caf-list{ gap:10px; } }
+</style>
+</head>
+<body>
+
+<h1>Dashboard de Pedidos</h1>
+<div class="controls">
+  <button id="prev">◀ Anterior</button>
+  <button id="next">Siguiente ▶</button>
+</div>
+
+<div class="days" id="days-container"></div>
+
+<!-- Modal 1: cafeterías del día -->
+<div id="modal-cafs" class="modal" aria-hidden="true">
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-cafs-title">
+    <button class="close" id="close-cafs" aria-label="Cerrar">&times;</button>
+    <h2 id="modal-cafs-title">Cafeterías con pedidos</h2>
+    <div id="caf-list" class="caf-list"></div>
+    <div id="modal-cafs-note" style="margin-top:10px;color:var(--muted);font-size:13px"></div>
+  </div>
+</div>
+
+<!-- Modal 2: detalle de un pedido -->
+<div id="modal-pedido" class="modal" aria-hidden="true">
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-pedido-title">
+    <button class="close" id="close-pedido" aria-label="Cerrar">&times;</button>
+    <div id="pedido-content"></div>
+    <div class="modal-actions" style="justify-content:flex-end;">
+      <button id="btn-regresar" class="btn-secondary">Regresar</button>
+      <button id="btn-cerrar" class="btn-primary">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="debug-log" class="debug"></div>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+/* CONFIG - usar los valores que proporcionaste */
+const SUPABASE_URL = "https://bytzcqefannnmbplypin.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5dHpjcWVmYW5ubm1icGx5cGluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1MjAxNzIsImV4cCI6MjA4MDA5NjE3Mn0.rUvBeh-1LPos8h8FJksC_Ep9ofR5CZMKAgWdMGTHpvk";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* Elementos */
+const container = document.getElementById("days-container");
+const modalCafs = document.getElementById("modal-cafs");
+const cafListEl = document.getElementById("caf-list");
+const modalCafsNote = document.getElementById("modal-cafs-note");
+const closeCafs = document.getElementById("close-cafs");
+
+const modalPedido = document.getElementById("modal-pedido");
+const pedidoContent = document.getElementById("pedido-content");
+const closePedido = document.getElementById("close-pedido");
+const btnRegresar = document.getElementById("btn-regresar");
+const btnCerrar = document.getElementById("btn-cerrar");
+
+const debugLog = document.getElementById("debug-log");
+
+closeCafs.onclick = () => cerrarModal(modalCafs);
+closePedido.onclick = () => cerrarModal(modalPedido);
+btnCerrar.onclick = () => cerrarModal(modalPedido);
+btnRegresar.onclick = () => {
+  cerrarModal(modalPedido);
+  abrirModal(modalCafs);
+};
+
+window.onclick = e => { if (e.target === modalCafs) cerrarModal(modalCafs); if (e.target === modalPedido) cerrarModal(modalPedido); };
+
+let offset = 0;
+let lastAgrupacion = null;
+
+/* Normalizar texto */
+function normalizar(s){ return s ? s.toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') : ''; }
+
+/* Mapeo de nombres a archivos (si existe archivo por nombre) */
+const archivoCafeteria = {
+  "breck":"breck.html",
+  "amin":"amin.html",
+  "zuzu":"zuzu.html",
+  "ponke":"ponke.html",
+  "cafe del sur":"cafe-del-sur.html",
+  "cafe-del-sur":"cafe-del-sur.html"
+};
+
+function formatoDia(fecha){
+  return fecha.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"short"});
+}
+function abrirModal(modal){ modal.classList.add('open'); modal.setAttribute('aria-hidden','false'); }
+function cerrarModal(modal){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
+function logDebug(obj){ debugLog.style.display = 'none'; debugLog.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj,null,2); }
+
+/* Cargar pedidos y renderizar días
+   Se selecciona la tabla pedidos y se trae el nombre de cafetería desde la relación cafeterias.nombre
+*/
+async function cargarPedidos(){
+  try {
+    const { data, error } = await supabase
+      .from("pedidos")
+      .select("id,cafeterias_id,sucursal,producto,cantidad,fecha_pedido,fecha_registro,notas,cafeterias(nombre)")
+      .order("fecha_pedido",{ascending:false});
+
+    if(error){ console.error(error); logDebug("Error Supabase: "+JSON.stringify(error)); return; }
+    const lastData = data || [];
+    logDebug(lastData);
+
+    container.innerHTML = "";
+    const hoy = new Date();
+    for(let i=0;i<6;i++){
+      const fecha = new Date(hoy);
+      fecha.setDate(hoy.getDate()+i+offset);
+      const diaTexto = formatoDia(fecha);
+
+      const card = document.createElement("div");
+      card.className = "day-card";
+      card.textContent = diaTexto;
+
+      const pedidosDia = (lastData || []).filter(p=>{
+        try { return new Date(p.fecha_pedido).toDateString() === fecha.toDateString(); } catch(e){ return false; }
+      });
+
+      if(pedidosDia.length>0) card.classList.add("verde");
+
+      card.addEventListener('click', () => {
+        abrirModalCafeterias(pedidosDia, fecha);
+      });
+
+      container.appendChild(card);
+    }
+  } catch (err) {
+    console.error("Error cargarPedidos:", err);
+    logDebug("Excepción: "+String(err));
+  }
+}
+
+/* Modal 1: mostrar tarjetas por cafetería */
+function abrirModalCafeterias(pedidosDia, fecha){
+  cafListEl.innerHTML = "";
+  modalCafsNote.textContent = `Pedidos para ${formatoDia(fecha)} — toca una cafetería para ver el pedido.`;
+
+  if(!pedidosDia || pedidosDia.length === 0){
+    cafListEl.innerHTML = "<p>No hay pedidos para este día.</p>";
+    abrirModal(modalCafs);
+    return;
+  }
+
+  const agrup = {};
+  pedidosDia.forEach(p => {
+    const nombreCaf = (p.cafeterias && p.cafeterias.nombre) ? p.cafeterias.nombre : String(p.cafeterias_id || 'sin-id');
+    const clave = normalizar(nombreCaf);
+    if(!agrup[clave]) agrup[clave] = { nombre: nombreCaf, items: [] };
+    agrup[clave].items.push(p);
+  });
+
+  lastAgrupacion = { agrup, fecha };
+
+  Object.keys(agrup).forEach(clave => {
+    const entry = agrup[clave];
+    const pedidos = entry.items;
+    const nombreReal = entry.nombre;
+
+    const card = document.createElement('div');
+    card.className = 'caf-card';
+    const h = document.createElement('h4'); h.textContent = nombreReal;
+    const p = document.createElement('p');
+
+    let totalItems = 0;
+    const sucursales = new Set();
+    pedidos.forEach(pp => {
+      totalItems += Number(pp.cantidad || 0);
+      if(pp.sucursal) sucursales.add(pp.sucursal);
+    });
+
+    p.textContent = `${totalItems} unidades · ${Array.from(sucursales).join(', ') || '1 sucursal'}`;
+
+    card.appendChild(h);
+    card.appendChild(p);
+
+    card.addEventListener('click', () => {
+      abrirModalPedido(nombreReal, pedidos);
+    });
+
+    cafListEl.appendChild(card);
+  });
+
+  abrirModal(modalCafs);
+}
+
+/* Modal 2: mostrar detalle de pedido (uno o varios registros) */
+function abrirModalPedido(nombre, pedidosArray){
+  pedidoContent.innerHTML = "";
+  const title = document.createElement('h2');
+  title.id = 'modal-pedido-title';
+  title.textContent = `Pedido — ${nombre}`;
+  pedidoContent.appendChild(title);
+
+  pedidosArray.forEach((p, idx) => {
+    const cont = document.createElement('div');
+    cont.className = 'detalle';
+    const sub = document.createElement('h3');
+    sub.textContent = `Registro ${idx+1} — ${new Date(p.fecha_registro || p.fecha_pedido).toLocaleString()}`;
+    cont.appendChild(sub);
+
+    // Enlace a la página de la cafetería si existe (mapea por nombre normalizado)
+    const clave = normalizar(p.cafeterias && p.cafeterias.nombre ? p.cafeterias.nombre : String(p.cafeterias_id));
+    const archivo = archivoCafeteria[clave];
+    if(archivo){
+      const a = document.createElement('a');
+      a.href = `Gestionp2p/${archivo}`;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'Abrir página de la cafetería';
+      a.style.display = 'inline-block';
+      a.style.marginBottom = '8px';
+      cont.appendChild(a);
+    }
+
+    // Mostrar detalle simple: sucursal, producto, cantidad, notas
+    const ul = document.createElement('ul');
+    const li1 = document.createElement('li');
+    li1.textContent = `Sucursal: ${p.sucursal ?? '—'}`;
+    ul.appendChild(li1);
+    const li2 = document.createElement('li');
+    li2.textContent = `Producto: ${p.producto ?? '—'}`;
+    ul.appendChild(li2);
+    const li3 = document.createElement('li');
+    li3.textContent = `Cantidad: ${p.cantidad ?? 0}`;
+    ul.appendChild(li3);
+    const li4 = document.createElement('li');
+    li4.textContent = `Fecha pedido: ${p.fecha_pedido ?? '—'}`;
+    ul.appendChild(li4);
+    if(p.notas){
+      const li5 = document.createElement('li');
+      li5.textContent = `Notas: ${p.notas}`;
+      ul.appendChild(li5);
+    }
+
+    cont.appendChild(ul);
+    pedidoContent.appendChild(cont);
+  });
+
+  cerrarModal(modalCafs);
+  abrirModal(modalPedido);
+}
+
+/* Navegación */
+document.getElementById('prev').onclick = () => { offset -= 6; cargarPedidos(); };
+document.getElementById('next').onclick = () => { offset += 6; cargarPedidos(); };
+
+/* Realtime: escuchar inserts en la tabla pedidos */
+supabase.channel("public:pedidos")
+  .on("postgres_changes",{event:"INSERT",schema:"public",table:"pedidos"},payload=>{
+    setTimeout(()=> cargarPedidos(), 300);
+  })
+  .subscribe();
+
+/* Inicializar */
+cargarPedidos();
+</script>
+</body>
+</html>
