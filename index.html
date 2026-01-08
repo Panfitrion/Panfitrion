@@ -15,20 +15,9 @@
       cursor: pointer;
       transition: background 0.3s;
     }
-    .tarjeta-dia.verde {
-      background: #d4edda; /* verde suave */
-    }
-    .tarjeta-dia h3 {
-      margin-top: 0;
-      color: #333;
-    }
-    .pedido {
-      padding: 0.25rem 0;
-      border-bottom: 1px solid #eee;
-    }
-    .pedido:last-child { border-bottom: none; }
+    .tarjeta-dia.verde { background: #d4edda; }
+    .tarjeta-dia h3 { margin-top: 0; color: #333; }
 
-    /* Modal */
     .modal {
       display: none;
       position: fixed;
@@ -39,60 +28,44 @@
     }
     .modal-content {
       background: white;
-      margin: 10% auto;
+      margin: 5% auto;
       padding: 1rem;
       border-radius: 8px;
       width: 80%;
-      max-width: 600px;
-      transition: background 0.3s;
+      max-width: 700px;
     }
-    .modal-content.green {
-      background: #d4edda;
-    }
-    .close {
-      float: right;
-      font-size: 1.5rem;
-      cursor: pointer;
-    }
+    .modal-content.green { background: #d4edda; }
+    .close { float: right; font-size: 1.5rem; cursor: pointer; }
 
-    .nav-buttons {
-      text-align: center;
-      margin: 1rem;
-    }
-    .nav-buttons button {
-      margin: 0 0.5rem;
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 4px;
+    .cafeteria-card {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 0.5rem;
+      margin: 0.5rem 0;
       cursor: pointer;
-      background: #007bff;
-      color: white;
     }
   </style>
 </head>
 <body>
-  <h1>Pedidos por día solicitado</h1>
+  <h1>Pedidos próximos 6 días</h1>
+  <div id="contenedor-dias"></div>
 
-  <div class="nav-buttons">
-    <button id="prev">← Semana anterior</button>
-    <button id="next">Semana siguiente →</button>
+  <!-- Modal de cafeterías -->
+  <div id="modal-cafeterias" class="modal">
+    <div id="modal-cafeterias-content" class="modal-content">
+      <span class="close" id="close-cafeterias">&times;</span>
+      <h2 id="modal-cafeterias-title"></h2>
+      <div id="modal-cafeterias-body"></div>
+    </div>
   </div>
 
-  <!-- Tarjetas fijas para cada día -->
-  <div id="lunes" class="tarjeta-dia"><h3>Lunes</h3></div>
-  <div id="martes" class="tarjeta-dia"><h3>Martes</h3></div>
-  <div id="miércoles" class="tarjeta-dia"><h3>Miércoles</h3></div>
-  <div id="jueves" class="tarjeta-dia"><h3>Jueves</h3></div>
-  <div id="viernes" class="tarjeta-dia"><h3>Viernes</h3></div>
-  <div id="sábado" class="tarjeta-dia"><h3>Sábado</h3></div>
-  <div id="domingo" class="tarjeta-dia"><h3>Domingo</h3></div>
-
-  <!-- Modal -->
-  <div id="modal" class="modal">
-    <div id="modal-content" class="modal-content">
-      <span class="close">&times;</span>
-      <h2 id="modal-title"></h2>
-      <div id="modal-body"></div>
+  <!-- Modal de pedidos por cafetería -->
+  <div id="modal-pedidos" class="modal">
+    <div id="modal-pedidos-content" class="modal-content">
+      <span class="close" id="close-pedidos">&times;</span>
+      <h2 id="modal-pedidos-title"></h2>
+      <div id="modal-pedidos-body"></div>
     </div>
   </div>
 
@@ -102,9 +75,7 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcGh6ZG9kcGFzc29tZ2d0aGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1ODMxMTIsImV4cCI6MjA4MzE1OTExMn0.mQNeavAOItO-wTgfGVac-z91baYxsa6866HpBOZy3nM";
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const dias = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
-    let pedidosPorDia = {};
-    let semanaOffset = 0; // para navegar semanas
+    const contenedor = document.getElementById("contenedor-dias");
 
     async function cargarPedidos() {
       const { data: pedidos, error } = await client
@@ -112,85 +83,85 @@
         .select("id,cafeterias_id,sucursal,producto,cantidad,fecha_pedido,fecha_registro,notas,cafeterias(nombre)")
         .order("fecha_pedido",{ascending:true});
 
-      if (error) {
-        console.error("Error en la consulta:", error);
-        return;
+      if (error) { console.error(error); return; }
+
+      // Calcular hoy y los próximos 5 días
+      const hoy = new Date();
+      const diasMostrar = [];
+      for (let i=0; i<6; i++) {
+        const fecha = new Date(hoy);
+        fecha.setDate(hoy.getDate()+i);
+        if (fecha.getDay() !== 0) { // excluir domingo
+          diasMostrar.push(fecha);
+        }
       }
 
-      // Agrupar por día de la semana en la semana actual + offset
-      pedidosPorDia = {};
-      dias.forEach(d => pedidosPorDia[d] = []);
+      contenedor.innerHTML = "";
+      diasMostrar.forEach(fecha => {
+        const fechaStr = fecha.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
+        const tarjeta = document.createElement("div");
+        tarjeta.classList.add("tarjeta-dia");
+        tarjeta.innerHTML = `<h3>${fechaStr}</h3>`;
 
-      const hoy = new Date();
-      const inicioSemana = new Date(hoy);
-      inicioSemana.setDate(hoy.getDate() - hoy.getDay() + (semanaOffset*7));
+        // filtrar pedidos de ese día
+        const pedidosDia = pedidos.filter(p => {
+          const f = new Date(p.fecha_pedido);
+          return f.toDateString() === fecha.toDateString();
+        });
 
-      const finSemana = new Date(inicioSemana);
-      finSemana.setDate(inicioSemana.getDate() + 6);
+        if (pedidosDia.length > 0) tarjeta.classList.add("verde");
 
-      pedidos.forEach(p => {
-        const fechaPedido = new Date(p.fecha_pedido);
-        if (fechaPedido >= inicioSemana && fechaPedido <= finSemana) {
-          const diaSemana = dias[fechaPedido.getDay()];
-          pedidosPorDia[diaSemana].push(p);
-        }
-      });
-
-      // Actualizar tarjetas
-      dias.forEach(d => {
-        const tarjeta = document.getElementById(d);
-        tarjeta.innerHTML = `<h3>${d.charAt(0).toUpperCase()+d.slice(1)}</h3>`;
-        tarjeta.classList.remove("verde");
-        if (pedidosPorDia[d].length > 0) {
-          tarjeta.classList.add("verde");
-        }
+        tarjeta.onclick = () => abrirModalCafeterias(fechaStr, pedidosDia);
+        contenedor.appendChild(tarjeta);
       });
     }
 
-    // Modal logic
-    const modal = document.getElementById("modal");
-    const modalContent = document.getElementById("modal-content");
-    const modalTitle = document.getElementById("modal-title");
-    const modalBody = document.getElementById("modal-body");
-    const closeBtn = document.querySelector(".close");
+    // Modal cafeterías
+    const modalCafeterias = document.getElementById("modal-cafeterias");
+    const modalCafeteriasTitle = document.getElementById("modal-cafeterias-title");
+    const modalCafeteriasBody = document.getElementById("modal-cafeterias-body");
+    document.getElementById("close-cafeterias").onclick = () => modalCafeterias.style.display="none";
 
-    closeBtn.onclick = () => { modal.style.display = "none"; };
-    window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; };
+    function abrirModalCafeterias(fechaStr, pedidosDia) {
+      modalCafeteriasTitle.textContent = `Cafeterías con pedidos para ${fechaStr}`;
+      modalCafeteriasBody.innerHTML = "";
+      if (pedidosDia.length === 0) {
+        modalCafeteriasBody.innerHTML = "<p>No hay pedidos.</p>";
+      } else {
+        const cafeteriasUnicas = [...new Set(pedidosDia.map(p=>p.cafeterias?.nombre))];
+        cafeteriasUnicas.forEach(nombre => {
+          const card = document.createElement("div");
+          card.classList.add("cafeteria-card");
+          card.textContent = nombre;
+          card.onclick = () => abrirModalPedidos(nombre, pedidosDia.filter(p=>p.cafeterias?.nombre===nombre));
+          modalCafeteriasBody.appendChild(card);
+        });
+      }
+      modalCafeterias.style.display="block";
+    }
 
-    dias.forEach(d => {
-      document.getElementById(d).onclick = () => {
-        const pedidos = pedidosPorDia[d];
-        modalBody.innerHTML = "";
+    // Modal pedidos por cafetería
+    const modalPedidos = document.getElementById("modal-pedidos");
+    const modalPedidosTitle = document.getElementById("modal-pedidos-title");
+    const modalPedidosBody = document.getElementById("modal-pedidos-body");
+    document.getElementById("close-pedidos").onclick = () => modalPedidos.style.display="none";
 
-        if (pedidos.length === 0) {
-          modalTitle.textContent = `Pedidos para ${d.charAt(0).toUpperCase()+d.slice(1)}`;
-          modalContent.classList.remove("green");
-          modalBody.innerHTML = "<p>No hay pedidos para este día.</p>";
-        } else {
-          const fechaPedido = new Date(pedidos[0].fecha_pedido).toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
-          modalTitle.textContent = `Pedidos para ${fechaPedido}`;
-          modalContent.classList.add("green");
+    function abrirModalPedidos(nombre, pedidosCafe) {
+      modalPedidosTitle.textContent = `Pedidos de ${nombre}`;
+      modalPedidosBody.innerHTML = "";
+      pedidosCafe.forEach(p => {
+        const fechaRegistro = new Date(p.fecha_registro).toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+        const item = document.createElement("div");
+        item.classList.add("pedido");
+        item.textContent = `${p.producto} x${p.cantidad} (registrado el ${fechaRegistro})`;
+        modalPedidosBody.appendChild(item);
+      });
+      modalPedidos.style.display="block";
+    }
 
-          pedidos.forEach(p => {
-            const fechaRegistro = new Date(p.fecha_registro).toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
-            const item = document.createElement("div");
-            item.classList.add("pedido");
-            item.textContent = `${p.cafeterias?.nombre || "?"} - ${p.sucursal}: ${p.producto} x${p.cantidad} (registrado el ${fechaRegistro})`;
-            modalBody.appendChild(item);
-          });
-        }
-        modal.style.display = "block";
-      };
-    });
-
-    // Navegación semanas
-    document.getElementById("prev").onclick = () => {
-      semanaOffset--;
-      cargarPedidos();
-    };
-    document.getElementById("next").onclick = () => {
-      semanaOffset++;
-      cargarPedidos();
+    window.onclick = (event) => {
+      if (event.target==modalCafeterias) modalCafeterias.style.display="none";
+      if (event.target==modalPedidos) modalPedidos.style.display="none";
     };
 
     cargarPedidos();
