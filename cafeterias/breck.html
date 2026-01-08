@@ -20,7 +20,12 @@ input[type="number"]{ width:72px; text-align:right; }
 textarea{ width:100%; min-height:64px; resize:vertical; }
 #enviar{ width:100%; padding:12px; border-radius:10px; border:none; background:var(--ok); color:#fff; font-size:16px; cursor:pointer; margin-top:8px; }
 #status{ margin-top:8px; font-size:14px; text-align:center; }
-.empty { color:var(--muted); padding:8px; background:#fff; border-radius:8px; border:1px dashed #e0e0e0; }
+h2{ font-size:18px; color:var(--accent); margin:12px 0 8px; text-align:center; }
+.empty { color:var(--muted); padding:8px; background:#fff; border-radius:8px; border:1px dashed #e0e0e0; text-align:center; }
+.historial-item{ background:#fff; border:1px solid #ddd; border-radius:8px; padding:8px; margin-bottom:8px; }
+.historial-item strong{ display:block; margin-bottom:4px; color:var(--accent); }
+.historial-item ul{ margin:4px 0 0 16px; padding:0; }
+.historial-item li{ font-size:14px; margin-bottom:2px; }
 </style>
 </head>
 <body>
@@ -35,6 +40,15 @@ textarea{ width:100%; min-height:64px; resize:vertical; }
     <textarea id="notas"></textarea>
     <button id="enviar">Enviar Pedido</button>
     <div id="status"></div>
+  </div>
+
+  <h2>Consultar pedidos por fecha</h2>
+  <div class="card">
+    <div style="display:flex; gap:8px; align-items:center;">
+      <input id="fecha_historial" type="date" style="flex:1;" />
+      <button id="ver_pedidos" style="padding:8px 12px;">Ver pedidos</button>
+    </div>
+    <div id="historial" style="margin-top:12px;"></div>
   </div>
 </div>
 
@@ -52,7 +66,7 @@ const PRODUCTOS = [
   "Croissant Almendra","Chocolatín Almendra","Galleta Chispas",
   "Galleta Avena","Galleta Red Velvet"
 ];
-const SUCURSALES = ["Bistro","Cafe"];
+const SUCURSALES = ["Bistro","Cafe"]; // si hay una sola, deja un solo elemento
 
 /* -------------------------
    Construir formulario
@@ -77,8 +91,7 @@ PRODUCTOS.forEach(prod=>{
 
     const inp=document.createElement("input");
     inp.type="number";
-    inp.min=0;
-    // 👇 ahora los inputs empiezan vacíos
+    inp.min=0;           // inputs empiezan vacíos (sin value)
     inp.dataset.producto=prod;
     inp.dataset.sucursal=suc;
 
@@ -99,7 +112,7 @@ document.getElementById("enviar").onclick = async () => {
   const fecha = document.getElementById("fecha_pedido").value;
   if (!fecha) { alert("Selecciona la fecha de entrega."); return; }
 
-  // 🔎 Validar si ya existe pedido para esa fecha
+  // Validar si ya existe pedido para esa fecha (por cafetería completa)
   const checkRes = await fetch(
     `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=id&cafeterias_id=eq.${CAFETERIAS_ID}&fecha_pedido=eq.${fecha}`,
     {
@@ -126,7 +139,7 @@ document.getElementById("enviar").onclick = async () => {
         sucursal: inp.dataset.sucursal,
         producto: inp.dataset.producto,
         cantidad: cantidad,
-        fecha_pedido: fecha,
+        fecha_pedido: fecha, // YYYY-MM-DD (input date)
         notas: notas
       });
     }
@@ -159,6 +172,79 @@ document.getElementById("enviar").onclick = async () => {
     document.getElementById("status").textContent = "Error de conexión: " + err;
   }
 };
+
+/* -------------------------
+   Historial por fecha
+   ------------------------- */
+document.getElementById("ver_pedidos").onclick = cargarHistorial;
+
+async function cargarHistorial(){
+  const fecha = document.getElementById("fecha_historial").value;
+  const cont = document.getElementById("historial");
+
+  if(!fecha){ alert("Selecciona una fecha."); return; }
+
+  cont.innerHTML = '<div class="empty">Cargando pedidos...</div>';
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*`,{
+      headers:{ "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+    });
+    if(!res.ok){
+      cont.innerHTML = '<div class="empty">No se pudo cargar el historial.</div>';
+      return;
+    }
+    const data = await res.json();
+
+    // Filtrar por cafetería + fecha
+    const pedidosCafe = data.filter(p => Number(p.cafeterias_id) === Number(CAFETERIAS_ID) && p.fecha_pedido === fecha);
+
+    if(pedidosCafe.length===0){
+      cont.innerHTML = '<div class="empty">No hay pedidos para esa fecha.</div>';
+      return;
+    }
+
+    // Agrupar por sucursal y sumar cantidades por producto
+    const grouped = {};
+    pedidosCafe.forEach(p=>{
+      const suc = p.sucursal || "—";
+      if(!grouped[suc]) grouped[suc] = { sucursal: suc, productos: {}, notas: [] };
+      const prodKey = p.producto;
+      const qty = Number(p.cantidad || 0);
+      grouped[suc].productos[prodKey] = (grouped[suc].productos[prodKey] || 0) + qty;
+      if(p.notas) grouped[suc].notas.push(p.notas);
+    });
+
+    cont.innerHTML = "";
+    Object.values(grouped).forEach(block=>{
+      const div = document.createElement("div");
+      div.className = "historial-item";
+      div.innerHTML = `<strong>Sucursal: ${block.sucursal}</strong>`;
+
+      const ul = document.createElement("ul");
+      Object.keys(block.productos).forEach(prod=>{
+        const li = document.createElement("li");
+        li.textContent = `${prod} x${block.productos[prod]}`;
+        ul.appendChild(li);
+      });
+      div.appendChild(ul);
+
+      if(block.notas.length > 0){
+        const notas = document.createElement("div");
+        notas.style.marginTop = "6px";
+        notas.style.fontSize = "13px";
+        notas.style.color = "var(--muted)";
+        notas.textContent = "Notas: " + Array.from(new Set(block.notas)).join(" | ");
+        div.appendChild(notas);
+      }
+
+      cont.appendChild(div);
+    });
+
+  }catch(err){
+    console.error("Error cargando historial:", err);
+    cont.innerHTML = '<div class="empty">Error cargando historial.</div>';
+  }
+}
 </script>
 </body>
 </html>
