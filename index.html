@@ -256,40 +256,41 @@
     const modalPedBody = document.getElementById("modal-pedidos-body");
     document.getElementById("close-pedidos").onclick = () => modalPed.classList.remove("show");
 
-    function openPedidosModal(nombreCafe, dayTitle, pedidosCafe) {
-      modalPedTitle.textContent = `Pedidos de ${nombreCafe} — ${dayTitle}`;
-      modalPedBody.innerHTML = "";
+   function openPedidosModal(nombreCafe, dayTitle, pedidosCafe) {
+  modalPedTitle.textContent = `Pedidos de ${nombreCafe} — ${dayTitle}`;
+  modalPedBody.innerHTML = "";
 
-      if (!pedidosCafe || pedidosCafe.length === 0) {
-        modalPedContent.classList.remove("green");
-        modalPedBody.innerHTML = "<p class='muted'>Sin pedidos.</p>";
-      } else {
-        modalPedContent.classList.add("green");
+  if (!pedidosCafe || pedidosCafe.length === 0) {
+    modalPedContent.classList.remove("green");
+    modalPedBody.innerHTML = "<p class='muted'>Sin pedidos.</p>";
+  } else {
+    modalPedContent.classList.add("green");
 
-        // Agrupar por id de pedido: cada pedido puede tener varias filas (productos)
-        const byPedido = new Map();
-        pedidosCafe.forEach(p => {
-          const id = p.id ?? Math.random().toString(36).slice(2,9); // fallback si no hay id
-          if (!byPedido.has(id)) {
-            byPedido.set(id, { sucursal: p.sucursal, fecha_registro: p.fecha_registro, productos: [] });
-          }
-          // Si la tabla guarda cada producto como fila separada, agrupamos aquí
-          byPedido.get(id).productos.push({ nombre: p.producto, cantidad: p.cantidad });
-        });
-
-        byPedido.forEach((pedido, id) => {
-          const fechaReg = pedido.fecha_registro ? parseDateFromDateString(pedido.fecha_registro).toLocaleDateString('es-MX', { day:'numeric', month:'long', year:'numeric' }) : "sin registro";
-          const productosText = pedido.productos.map(x => `${x.nombre} x${x.cantidad}`).join(", ");
-          const item = document.createElement("div");
-          item.className = "pedido";
-          item.innerHTML = `<div><strong>Pedido #${id}</strong> — ${pedido.sucursal || ''}</div>
-                            <div class="muted">Productos: ${productosText}</div>
-                            <div class="small">Registrado el ${fechaReg}</div>`;
-          modalPedBody.appendChild(item);
-        });
+    // Agrupar por id de pedido
+    const byPedido = new Map();
+    pedidosCafe.forEach(p => {
+      const id = p.id ?? Math.random().toString(36).slice(2,9);
+      if (!byPedido.has(id)) {
+        byPedido.set(id, { sucursal: p.sucursal, productos: [] });
       }
-      modalPed.classList.add("show");
-    }
+      byPedido.get(id).productos.push({ nombre: p.producto, cantidad: p.cantidad });
+    });
+
+    byPedido.forEach((pedido, id) => {
+      const productosText = pedido.productos.map(x => `${x.nombre} x${x.cantidad}`).join(", ");
+      const item = document.createElement("div");
+      item.className = "pedido";
+      item.innerHTML = `
+        <div><strong>Pedido #${id}</strong></div>
+        <div class="muted">Sucursal: ${pedido.sucursal || ''}</div>
+        <div class="muted">Productos: ${productosText}</div>
+      `;
+      modalPedBody.appendChild(item);
+    });
+  }
+  modalPed.classList.add("show");
+}
+
 
     // Cerrar modales al click fuera
     window.addEventListener("click", (ev) => {
