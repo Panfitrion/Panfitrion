@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Dashboard de Pedidos</title>
+  <meta charset="utf-8" />
+  <title>Dashboard de Pedidos (DATE)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f5f5f5; margin:0; padding:1rem; }
@@ -14,8 +14,7 @@
     .tarjeta-dia {
       background:#fff; padding:1rem; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,.08);
       cursor:pointer; min-height:96px; display:flex; flex-direction:column; justify-content:flex-start;
-      transition:transform .12s, box-shadow .12s, background .12s;
-      border:2px solid transparent;
+      transition:transform .12s, box-shadow .12s, background .12s; border:2px solid transparent;
     }
     .tarjeta-dia:hover { transform:translateY(-4px); box-shadow:0 6px 14px rgba(0,0,0,.12); }
     .tarjeta-dia.verde { background:#e9f7ee; border-color:#28a745; }
@@ -40,10 +39,11 @@
   </style>
 </head>
 <body>
-  <h1>Pedidos (hoy + 5 días, sin domingos)</h1>
+  <h1>Pedidos (hoy + 5 días, sin domingos) — columnas DATE</h1>
 
   <div class="nav">
     <button id="prev">← Ver días anteriores</button>
+    <button id="today">Hoy</button>
     <button id="next">Ver días siguientes →</button>
   </div>
 
@@ -73,12 +73,26 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // --- Config Supabase (reemplaza si necesitas otra key) ---
+    /* -------------------------
+       Configuración Supabase
+       ------------------------- */
     const SUPABASE_URL = "https://pqphzdodpassomggthid.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcGh6ZG9kcGFzc29tZ2d0aGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1ODMxMTIsImV4cCI6MjA4MzE1OTExMn0.mQNeavAOItO-wTgfGVac-z91baYxsa6866HpBOZy3nM";
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // --- Utilidades de fecha ---
+    /* -------------------------
+       Utilidades de fecha (para DATE strings)
+       - parseDateFromDateString: recibe "YYYY-MM-DD" y devuelve Date local (sin desfase UTC)
+       - resetToLocalMidnight / sameDay / addDays
+       ------------------------- */
+    function parseDateFromDateString(dateStr) {
+      // dateStr expected "YYYY-MM-DD" (columna DATE)
+      if (!dateStr) return null;
+      const parts = String(dateStr).split("-");
+      if (parts.length < 3) return new Date(dateStr);
+      const y = Number(parts[0]), m = Number(parts[1]) - 1, d = Number(parts[2]);
+      return new Date(y, m, d); // local midnight
+    }
     function resetToLocalMidnight(d) {
       return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     }
@@ -93,11 +107,15 @@
     const opcionesTitulo = { weekday:'long', day:'numeric', month:'long' };
     function toTitleEsMX(d) { return d.toLocaleDateString('es-MX', opcionesTitulo); }
 
-    // --- Estado ---
-    let allPedidos = []; // cache de pedidos
+    /* -------------------------
+       Estado
+       ------------------------- */
+    let allPedidos = []; // cache
     let baseDate = resetToLocalMidnight(new Date()); // inicio del rango (hoy por defecto)
 
-    // --- Cargar pedidos desde Supabase ---
+    /* -------------------------
+       Cargar pedidos (usa fecha como DATE en la tabla)
+       ------------------------- */
     async function loadPedidos() {
       try {
         const { data, error } = await client
@@ -115,7 +133,9 @@
       }
     }
 
-    // --- Construir 6 días (hoy +5) saltando domingos ---
+    /* -------------------------
+       Construir 6 días (hoy +5) saltando domingos
+       ------------------------- */
     function buildSixDays(startDate) {
       const days = [];
       let cursor = resetToLocalMidnight(startDate);
@@ -126,7 +146,9 @@
       return days;
     }
 
-    // --- Renderizar tarjetas ---
+    /* -------------------------
+       Renderizar tarjetas (usa parseDateFromDateString para evitar desfase)
+       ------------------------- */
     function renderSixCards() {
       const contenedor = document.getElementById("contenedor-dias");
       const days = buildSixDays(baseDate);
@@ -138,11 +160,12 @@
         tarjeta.className = "tarjeta-dia";
         tarjeta.innerHTML = `<h3>${title}</h3><div class="tarjeta-info muted">Toca para ver cafeterías</div>`;
 
-        // Filtrar por fecha_pedido (normalizando a medianoche local)
+        // Filtrar por fecha_pedido (columna DATE -> string "YYYY-MM-DD")
         const pedidosDia = allPedidos.filter(p => {
-  const fp = new Date(p.fecha_pedido); // ahora es un DATE puro
-  return sameDay(fp, day);
-});
+          if (!p.fecha_pedido) return false;
+          const fp = parseDateFromDateString(p.fecha_pedido);
+          return sameDay(fp, day);
+        });
 
         if (pedidosDia.length > 0) tarjeta.classList.add("verde");
 
@@ -151,7 +174,9 @@
       });
     }
 
-    // --- Modal cafeterías ---
+    /* -------------------------
+       Modal cafeterías
+       ------------------------- */
     const modalCaf = document.getElementById("modal-cafeterias");
     const modalCafContent = document.getElementById("modal-cafeterias-content");
     const modalCafTitle = document.getElementById("modal-cafeterias-title");
@@ -187,7 +212,9 @@
       modalCaf.classList.add("show");
     }
 
-    // --- Modal pedidos por cafetería ---
+    /* -------------------------
+       Modal pedidos por cafetería
+       ------------------------- */
     const modalPed = document.getElementById("modal-pedidos");
     const modalPedContent = document.getElementById("modal-pedidos-content");
     const modalPedTitle = document.getElementById("modal-pedidos-title");
@@ -204,7 +231,8 @@
       } else {
         modalPedContent.classList.add("green");
         pedidosCafe.forEach(p => {
-          const fechaReg = p.fecha_registro ? new Date(p.fecha_registro).toLocaleDateString('es-MX', { day:'numeric', month:'long', year:'numeric' }) : "sin registro";
+          // fecha_registro también es DATE -> parsear con parseDateFromDateString
+          const fechaReg = p.fecha_registro ? parseDateFromDateString(p.fecha_registro).toLocaleDateString('es-MX', { day:'numeric', month:'long', year:'numeric' }) : "sin registro";
           const item = document.createElement("div");
           item.className = "pedido";
           item.innerHTML = `<div><strong>${p.producto}</strong> — ${p.sucursal || ''}</div><div class="muted">${p.cantidad || 0} unidad(es) • registrado el ${fechaReg}</div>`;
@@ -220,7 +248,11 @@
       if (ev.target === modalPed) modalPed.classList.remove("show");
     });
 
-    // --- Navegación de días (mueve baseDate un día atrás/adelante, respetando no-domingo) ---
+    /* -------------------------
+       Navegación de días
+       - Prev/Next mueven baseDate un día (saltando domingos)
+       - Hoy vuelve al día actual
+       ------------------------- */
     document.getElementById("prev").onclick = () => {
       baseDate = addDays(baseDate, -1);
       if (baseDate.getDay() === 0) baseDate = addDays(baseDate, -1);
@@ -231,12 +263,18 @@
       if (baseDate.getDay() === 0) baseDate = addDays(baseDate, 1);
       renderSixCards();
     };
+    document.getElementById("today").onclick = () => {
+      baseDate = resetToLocalMidnight(new Date());
+      if (baseDate.getDay() === 0) baseDate = addDays(baseDate, 1); // si hoy es domingo, saltar al lunes
+      renderSixCards();
+    };
 
-    // --- Realtime: escuchar INSERT, UPDATE, DELETE y recargar cache + render ---
+    /* -------------------------
+       Realtime: escuchar INSERT/UPDATE/DELETE y recargar cache + render
+       ------------------------- */
     function setupRealtime() {
-      // INSERT
       client
-        .channel('realtime-pedidos-insert')
+        .channel('realtime-pedidos')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, () => {
           loadPedidos().then(renderSixCards);
         })
@@ -249,7 +287,9 @@
         .subscribe();
     }
 
-    // --- Inicialización ---
+    /* -------------------------
+       Inicialización
+       ------------------------- */
     (async function init() {
       await loadPedidos();
       renderSixCards();
