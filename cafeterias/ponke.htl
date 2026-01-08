@@ -60,7 +60,7 @@ const TABLE_NAME = "pedidos";
 
 /* Datos de esta cafetería */
 const CAFETERIA = "Ponke";
-const CAFETERIAS_ID = 10; // reemplaza con el id real en tu tabla cafeterias
+const CAFETERIAS_ID = 5; // reemplaza con el id real en tu tabla cafeterias
 const PRODUCTOS = [
  "Hogaza","Baguette","Brioche","Tarta Rústica","Scone"
 ];
