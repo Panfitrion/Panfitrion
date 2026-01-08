@@ -75,8 +75,27 @@
     }
     .cafeteria-card:hover { background:#fafafa; }
 
-    .pedido { padding:.5rem 0; border-bottom:1px solid #eee; }
+    /* Pedido block: texto más grande y lista de productos */
+    .pedido {
+      padding:.75rem 0;
+      border-bottom:1px solid #eee;
+      font-size:1.15rem; /* texto más grande */
+      line-height:1.35;
+    }
     .pedido:last-child { border-bottom:none; }
+    .pedido strong { font-size:1.18rem; display:block; margin-bottom:.35rem; }
+    .pedido .sucursal { color:#333; font-weight:600; margin-bottom:.35rem; }
+    .pedido ul {
+      margin: .25rem 0 0 1.25rem;
+      padding: 0;
+      list-style-type: disc;
+    }
+    .pedido li {
+      margin-bottom: .35rem;
+      font-size:1.05rem;
+      color:#222;
+    }
+
     .muted { color:var(--muted); font-size:.95rem; }
     .small { font-size:.9rem; color:#444; }
 
@@ -84,6 +103,8 @@
     @media (max-width:520px){
       .tarjeta-dia { padding:1rem; min-height:160px; }
       #contenedor-dias { grid-template-columns: 1fr; }
+      .pedido { font-size:1rem; }
+      .pedido li { font-size:.98rem; }
     }
   </style>
 </head>
@@ -249,48 +270,61 @@
       modalCaf.classList.add("show");
     }
 
-    // --- Modal pedidos por cafetería (agrupa productos por pedido id) ---
+    // --- Modal pedidos por cafetería (agrupa por fecha_pedido + cafetería + sucursal)
     const modalPed = document.getElementById("modal-pedidos");
     const modalPedContent = document.getElementById("modal-pedidos-content");
     const modalPedTitle = document.getElementById("modal-pedidos-title");
     const modalPedBody = document.getElementById("modal-pedidos-body");
     document.getElementById("close-pedidos").onclick = () => modalPed.classList.remove("show");
 
-  function openPedidosModal(nombreCafe, dayTitle, pedidosCafe) {
-  modalPedTitle.textContent = `Pedidos de ${nombreCafe} — ${dayTitle}`;
-  modalPedBody.innerHTML = "";
+    function openPedidosModal(nombreCafe, dayTitle, pedidosCafe) {
+      modalPedTitle.textContent = `Pedidos de ${nombreCafe} — ${dayTitle}`;
+      modalPedBody.innerHTML = "";
 
-  if (!pedidosCafe || pedidosCafe.length === 0) {
-    modalPedContent.classList.remove("green");
-    modalPedBody.innerHTML = "<p class='muted'>Sin pedidos.</p>";
-  } else {
-    modalPedContent.classList.add("green");
+      if (!pedidosCafe || pedidosCafe.length === 0) {
+        modalPedContent.classList.remove("green");
+        modalPedBody.innerHTML = "<p class='muted'>Sin pedidos.</p>";
+      } else {
+        modalPedContent.classList.add("green");
 
-    // Agrupar por combinación fecha_pedido + cafetería + sucursal
-    const grouped = {};
-    pedidosCafe.forEach(p => {
-      const key = `${p.fecha_pedido}_${p.cafeterias?.nombre}_${p.sucursal}`;
-      if (!grouped[key]) {
-        grouped[key] = { sucursal: p.sucursal, productos: [] };
+        // Agrupar por combinación fecha_pedido + cafetería + sucursal
+        const grouped = {};
+        pedidosCafe.forEach(p => {
+          const cafeNombre = p.cafeterias?.nombre || nombreCafe || "desconocida";
+          const key = `${p.fecha_pedido}__${cafeNombre}__${p.sucursal || ''}`;
+          if (!grouped[key]) {
+            grouped[key] = { sucursal: p.sucursal || '', productos: [] };
+          }
+          grouped[key].productos.push({ nombre: p.producto, cantidad: p.cantidad });
+        });
+
+        // Renderizar cada bloque: Sucursal + lista de productos (sin mostrar pedido #)
+        Object.values(grouped).forEach(block => {
+          const item = document.createElement("div");
+          item.className = "pedido";
+
+          // Sucursal
+          const sucDiv = document.createElement("div");
+          sucDiv.className = "sucursal";
+          sucDiv.textContent = `Sucursal: ${block.sucursal || '—'}`;
+          item.appendChild(sucDiv);
+
+          // Lista de productos
+          const ul = document.createElement("ul");
+          // Ordenar alfabéticamente por nombre para consistencia (opcional)
+          block.productos.sort((a,b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+          block.productos.forEach(prod => {
+            const li = document.createElement("li");
+            li.textContent = `${prod.nombre} x${prod.cantidad}`;
+            ul.appendChild(li);
+          });
+          item.appendChild(ul);
+
+          modalPedBody.appendChild(item);
+        });
       }
-      grouped[key].productos.push(`${p.producto} x${p.cantidad}`);
-    });
-
-    Object.values(grouped).forEach(pedido => {
-      const productosText = pedido.productos.join(", ");
-      const item = document.createElement("div");
-      item.className = "pedido";
-      item.innerHTML = `
-        <div><strong>Sucursal: ${pedido.sucursal || ''}</strong></div>
-        <div class="muted">Productos: ${productosText}</div>
-      `;
-      modalPedBody.appendChild(item);
-    });
-  }
-  modalPed.classList.add("show");
-}
-
-
+      modalPed.classList.add("show");
+    }
 
     // Cerrar modales al click fuera
     window.addEventListener("click", (ev) => {
@@ -301,7 +335,6 @@
     // --- Navegación semanal: prev/next mueven baseDate por 7 días ---
     document.getElementById("prev").onclick = () => {
       baseDate = addDays(baseDate, -7);
-      // si baseDate cae domingo, ajusta al día anterior (evitar iniciar en domingo)
       if (baseDate.getDay() === 0) baseDate = addDays(baseDate, -1);
       renderEightCards();
     };
