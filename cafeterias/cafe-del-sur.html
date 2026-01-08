@@ -25,6 +25,7 @@ textarea{ width:100%; min-height:64px; resize:vertical; }
 .historial-item strong{ display:block; margin-bottom:4px; color:var(--accent); }
 .historial-item ul{ margin:4px 0 0 16px; padding:0; }
 .historial-item li{ font-size:14px; margin-bottom:2px; }
+.historial-meta{ color:var(--muted); font-size:13px; margin-bottom:6px; }
 </style>
 </head>
 <body>
@@ -71,11 +72,6 @@ const PRODUCTOS = [
 ];
 const SUCURSALES = ["Principal"]; // si hay más sucursales, agrégalas aquí
 
-/* Mostrar título */
-document.getElementById("titulo")?.remove?.(); // por si existe
-const h1 = document.querySelector("h1");
-if(h1) h1.textContent = `${CAFETERIA} — Formulario de pedidos`;
-
 /* Construir formulario (inputs vacíos) */
 const productosDiv = document.getElementById("productos");
 PRODUCTOS.forEach(prod=>{
@@ -98,7 +94,7 @@ PRODUCTOS.forEach(prod=>{
     const inp = document.createElement("input");
     inp.type = "number";
     inp.min = 0;
-    // no value asignado -> empieza vacío
+    // inputs empiezan vacíos
     inp.dataset.producto = prod;
     inp.dataset.sucursal = suc;
 
@@ -137,7 +133,6 @@ document.getElementById("enviar").onclick = async () => {
   if (registros.length === 0) { alert("No hay cantidades para enviar."); return; }
 
   // Validar duplicados por sucursal: consultar si ya existe pedido para la misma sucursal y fecha
-  // Construimos una lista de checks únicos (sucursal)
   const sucursalesAConsultar = Array.from(new Set(registros.map(r => r.sucursal)));
   for (const suc of sucursalesAConsultar) {
     const checkRes = await fetch(
@@ -177,6 +172,9 @@ document.getElementById("enviar").onclick = async () => {
       document.getElementById("status").textContent = "Pedido enviado correctamente.";
       document.querySelectorAll("input[type=number]").forEach(i => i.value = "");
       document.getElementById("notas").value = "";
+      // refrescar historial si hay fecha seleccionada
+      const fechaHist = document.getElementById("fecha_historial").value;
+      if (fechaHist === fecha) cargarHistorial();
     } else {
       const text = await res.text();
       document.getElementById("status").textContent = "Error: " + text;
@@ -224,7 +222,12 @@ async function cargarHistorial(){
     Object.entries(grouped).forEach(([suc, block]) => {
       const div = document.createElement("div");
       div.className = "historial-item";
-      div.innerHTML = `<strong>Sucursal: ${suc}</strong>`;
+
+      const meta = document.createElement("div");
+      meta.className = "historial-meta";
+      meta.textContent = `${fecha} — Sucursal: ${suc}`;
+      div.appendChild(meta);
+
       const ul = document.createElement("ul");
       Object.keys(block.productos).forEach(prodName => {
         const li = document.createElement("li");
@@ -232,6 +235,7 @@ async function cargarHistorial(){
         ul.appendChild(li);
       });
       div.appendChild(ul);
+
       if (block.notas.length > 0) {
         const notasDiv = document.createElement("div");
         notasDiv.style.marginTop = "6px";
@@ -240,6 +244,7 @@ async function cargarHistorial(){
         notasDiv.textContent = "Notas: " + Array.from(new Set(block.notas)).join(" | ");
         div.appendChild(notasDiv);
       }
+
       cont.appendChild(div);
     });
 
