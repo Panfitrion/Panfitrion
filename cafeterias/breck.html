@@ -24,22 +24,27 @@ textarea{ width:100%; min-height:64px; resize:vertical; }
 .historial-item strong{ display:block; margin-bottom:4px; color:var(--accent); }
 .historial-item ul{ margin:4px 0 0 16px; padding:0; }
 .historial-item li{ font-size:14px; margin-bottom:2px; }
+.historial-meta{ color:var(--muted); font-size:13px; margin-bottom:6px; }
+.empty { color:var(--muted); padding:8px; background:#fff; border-radius:8px; border:1px dashed #e0e0e0; }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>Breck — Formulario de pedidos</h1>
+
   <div class="card">
     <label for="fecha_pedido">Fecha de entrega</label>
     <input id="fecha_pedido" type="date" />
-    <div id="productos"></div>
-    <label for="notas">Notas (opcional)</label>
+    <div id="productos" style="margin-top:12px;"></div>
+    <label for="notas" style="margin-top:8px; display:block;">Notas (opcional)</label>
     <textarea id="notas"></textarea>
     <button id="enviar">Enviar Pedido</button>
     <div id="status"></div>
   </div>
 
-  <h2>Historial de pedidos</h2>
+  <h2>Consultar pedidos por fecha</h2>
+  <input id="fecha_historial" type="date" />
+  <button onclick="cargarHistorial()">Ver pedidos</button>
   <div id="historial"></div>
 </div>
 
@@ -66,7 +71,8 @@ PRODUCTOS.forEach(prod=>{
     const label=document.createElement("label");
     label.textContent=suc;
     const inp=document.createElement("input");
-    inp.type="number"; inp.min=0; inp.dataset.producto=prod; inp.dataset.sucursal=suc;
+    inp.type="number"; inp.min=0; inp.value=0;
+    inp.dataset.producto=prod; inp.dataset.sucursal=suc;
     wrap.appendChild(label); wrap.appendChild(inp);
     sucInputs.appendChild(wrap);
   });
@@ -76,6 +82,7 @@ PRODUCTOS.forEach(prod=>{
 
 document.getElementById("enviar").onclick=async()=>{
   const fecha=document.getElementById("fecha_pedido").value;
+  if(!fecha){alert("Selecciona la fecha de entrega");return;}
   const notas=document.getElementById("notas").value||null;
   const registros=[];
   document.querySelectorAll("input[type=number]").forEach(inp=>{
@@ -93,7 +100,6 @@ document.getElementById("enviar").onclick=async()=>{
   });
   if(registros.length===0){alert("No hay cantidades");return;}
   document.getElementById("status").textContent="Enviando...";
-  
   const res=await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}`,{
     method:"POST",
     headers:{
@@ -108,49 +114,56 @@ document.getElementById("enviar").onclick=async()=>{
     document.getElementById("status").textContent="Pedido enviado correctamente.";
     document.querySelectorAll("input[type=number]").forEach(i=>i.value="");
     document.getElementById("notas").value="";
-    cargarHistorial(); // refrescar historial
   }else{
     document.getElementById("status").textContent="Error: "+await res.text();
   }
 };
 
-// Historial
-async function cargarHistorial() {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*`, {
-      headers:{
-        "apikey":SUPABASE_KEY,
-        "Authorization":`Bearer ${SUPABASE_KEY}`
-      }
+async function cargarHistorial(){
+  const fecha=document.getElementById("fecha_historial").value;
+  if(!fecha){alert("Selecciona una fecha");return;}
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*`,{
+      headers:{ "apikey":SUPABASE_KEY, "Authorization":`Bearer ${SUPABASE_KEY}` }
     });
-    const data = await res.json();
-    const pedidosCafe = data.filter(p => p.cafeterias_id === CAFETERIAS_ID);
-    const cont = document.getElementById("historial");
-    cont.innerHTML = "";
+    const data=await res.json();
+    const pedidosCafe=data.filter(p=>p.cafeterias_id===CAFETERIAS_ID && p.fecha_pedido===fecha);
+    const cont=document.getElementById("historial");
+    cont.innerHTML="";
     if(pedidosCafe.length===0){
-      cont.textContent="No hay pedidos registrados.";
+      cont.innerHTML='<div class="empty">No hay pedidos para esa fecha.</div>';
       return;
     }
+    // Agrupar por sucursal
+    const grouped={};
     pedidosCafe.forEach(p=>{
+      const key=p.sucursal||"";
+      if(!grouped[key]) grouped[key]={sucursal:p.sucursal, productos:[], notas:[]};
+      grouped[key].productos.push(`${p.producto} x${p.cantidad}`);
+      if(p.notas) grouped[key].notas.push(p.notas);
+    });
+    Object.values(grouped).forEach(block=>{
       const div=document.createElement("div");
       div.className="historial-item";
-      const fecha=p.fecha_pedido || "";
-      div.innerHTML=`<strong>${fecha}</strong>Sucursal: ${p.sucursal||""}`;
+      div.innerHTML=`<strong>Sucursal: ${block.sucursal}</strong>`;
       const ul=document.createElement("ul");
-      ul.appendChild(document.createElement("li")).textContent=`${p.producto} x${p.cantidad}`;
+      block.productos.forEach(prod=>{
+        const li=document.createElement("li");
+        li.textContent=prod;
+        ul.appendChild(li);
+      });
       div.appendChild(ul);
-      if(p.notas){ 
+      if(block.notas.length>0){
         const notas=document.createElement("div");
-        notas.textContent="Notas: "+p.notas;
+        notas.textContent="Notas: "+block.notas.join(" | ");
         div.appendChild(notas);
       }
       cont.appendChild(div);
     });
-  } catch(err){
+  }catch(err){
     console.error("Error cargando historial:",err);
   }
 }
-cargarHistorial();
 </script>
 </body>
 </html>
