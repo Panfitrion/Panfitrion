@@ -39,7 +39,7 @@ textarea{ width:100%; min-height:64px; resize:vertical; }
 <script>
 const SUPABASE_URL = "https://bytzcqefannnmbplypin.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5dHpjcWVmYW5ubm1icGx5cGluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1MjAxNzIsImV4cCI6MjA4MDA5NjE3Mn0.rUvBeh-1LPos8h8FJksC_Ep9ofR5CZMKAgWdMGTHpvk";
-const TABLE_NAME = "public.pedidos";
+const TABLE_NAME = "pedidos";
 const CAFETERIAS_ID = 1; // usa el id real de Breck en tu tabla cafeterias
 
 const PRODUCTOS = ["Croissant","Chocolatín","Hogaza","Foccacia"];
@@ -86,7 +86,8 @@ document.getElementById("enviar").onclick=async()=>{
   });
   if(registros.length===0){alert("No hay cantidades");return;}
   document.getElementById("status").textContent="Enviando...";
-  const res=await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}`,{
+  
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/pedidos`,{
     method:"POST",
     headers:{
       "Content-Type":"application/json",
