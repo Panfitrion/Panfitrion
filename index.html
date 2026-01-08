@@ -256,7 +256,7 @@
     const modalPedBody = document.getElementById("modal-pedidos-body");
     document.getElementById("close-pedidos").onclick = () => modalPed.classList.remove("show");
 
-   function openPedidosModal(nombreCafe, dayTitle, pedidosCafe) {
+  function openPedidosModal(nombreCafe, dayTitle, pedidosCafe) {
   modalPedTitle.textContent = `Pedidos de ${nombreCafe} — ${dayTitle}`;
   modalPedBody.innerHTML = "";
 
@@ -266,23 +266,22 @@
   } else {
     modalPedContent.classList.add("green");
 
-    // Agrupar por id de pedido
-    const byPedido = new Map();
+    // Agrupar por combinación fecha_pedido + cafetería
+    const grouped = {};
     pedidosCafe.forEach(p => {
-      const id = p.id ?? Math.random().toString(36).slice(2,9);
-      if (!byPedido.has(id)) {
-        byPedido.set(id, { sucursal: p.sucursal, productos: [] });
+      const key = `${p.fecha_pedido}_${nombreCafe}`;
+      if (!grouped[key]) {
+        grouped[key] = { sucursal: p.sucursal, productos: [] };
       }
-      byPedido.get(id).productos.push({ nombre: p.producto, cantidad: p.cantidad });
+      grouped[key].productos.push(`${p.producto} x${p.cantidad}`);
     });
 
-    byPedido.forEach((pedido, id) => {
-      const productosText = pedido.productos.map(x => `${x.nombre} x${x.cantidad}`).join(", ");
+    Object.values(grouped).forEach(pedido => {
+      const productosText = pedido.productos.join(", ");
       const item = document.createElement("div");
       item.className = "pedido";
       item.innerHTML = `
-        <div><strong>Pedido #${id}</strong></div>
-        <div class="muted">Sucursal: ${pedido.sucursal || ''}</div>
+        <div><strong>${pedido.sucursal || ''}</strong></div>
         <div class="muted">Productos: ${productosText}</div>
       `;
       modalPedBody.appendChild(item);
