@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Agregar Cafeterías</title>
+  <style>
+    body { font-family: system-ui; background:#f5f5f5; padding:1rem; }
+    h1 { text-align:center; }
+    .cafeteria-block {
+      background:#fff; padding:1rem; margin-bottom:1rem;
+      border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.1);
+    }
+    .cafeteria-block h2 { margin-top:0; }
+    .sucursal { margin:.5rem 0; }
+    button { margin-top:.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Formulario de Cafeterías</h1>
+
+  <div id="cafeterias"></div>
+
+  <button onclick="agregarCafeteria()">➕ Agregar Cafetería</button>
+
+  <script>
+    let contadorCafeterias = 0;
+
+    function agregarCafeteria() {
+      contadorCafeterias++;
+      const contenedor = document.getElementById("cafeterias");
+
+      const bloque = document.createElement("div");
+      bloque.className = "cafeteria-block";
+      bloque.innerHTML = `
+        <h2>Cafetería ${contadorCafeterias}</h2>
+        <label>Nombre: <input type="text" name="cafeteria_${contadorCafeterias}_nombre"></label><br>
+        <div class="sucursales" id="sucursales_${contadorCafeterias}">
+          <h3>Sucursales</h3>
+          <div class="sucursal">
+            <label>Nombre sucursal: <input type="text" name="cafeteria_${contadorCafeterias}_sucursal_1"></label>
+          </div>
+        </div>
+        <button type="button" onclick="agregarSucursal(${contadorCafeterias})">➕ Agregar sucursal</button>
+      `;
+      contenedor.appendChild(bloque);
+    }
+
+    function agregarSucursal(idCafeteria) {
+      const contenedorSucursales = document.getElementById("sucursales_" + idCafeteria);
+      const numSucursales = contenedorSucursales.querySelectorAll(".sucursal").length + 1;
+
+      const div = document.createElement("div");
+      div.className = "sucursal";
+      div.innerHTML = `
+        <label>Nombre sucursal: <input type="text" name="cafeteria_${idCafeteria}_sucursal_${numSucursales}"></label>
+      `;
+      contenedorSucursales.appendChild(div);
+    }
+  </script>
+</body>
+</html>
