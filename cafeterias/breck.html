@@ -153,16 +153,17 @@ document.getElementById('enviar').onclick = async () => {
 
   try {
     statusEl.textContent = "Enviando pedido...";
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${SUPABASE_KEY}`,
-        "Prefer": "return=minimal"
-      },
-      body: JSON.stringify(registros)
-    });
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/pedidos`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "apikey": SUPABASE_KEY,
+    "Authorization": `Bearer ${SUPABASE_KEY}`,
+    "Prefer": "return=minimal"
+  },
+  body: JSON.stringify(registros)
+});
+
 
     if(res.ok){
       statusEl.textContent = "Pedido enviado correctamente.";
