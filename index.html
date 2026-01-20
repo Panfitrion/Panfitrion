@@ -268,6 +268,66 @@
       color: #222;
       font-weight: 600;
     }
+
+    /* Botón URLs */
+    .btn-urls {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      font-size: 0.95rem;
+    }
+
+    .btn-urls:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    /* Modal URLs */
+    .url-item {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.8rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .url-text {
+      flex: 1;
+      font-size: 0.9rem;
+      color: #333;
+      word-break: break-all;
+      font-family: monospace;
+      line-height: 1.4;
+    }
+
+    .btn-copy {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .btn-copy:hover {
+      opacity: 0.9;
+    }
+
+    .btn-copy.copied {
+      background: var(--green-border);
+    }
     
     /* Responsive */
     @media (max-width: 1024px) {
@@ -322,6 +382,7 @@
       <button id="btn-prev" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; background: #6c757d; color: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">← Día anterior</button>
       <button id="btn-hoy" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; background: var(--accent); color: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">Hoy</button>
       <button id="btn-next" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; background: #6c757d; color: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">Día siguiente →</button>
+      <button id="btn-urls" class="btn-urls">🔗 URLs</button>
     </div>
   </header>
 
@@ -367,6 +428,38 @@
         <button id="close-pedidos" class="close" aria-label="Cerrar">&times;</button>
       </div>
       <div id="modal-pedidos-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Modal: URLs de cafeterías -->
+  <div id="modal-urls" class="modal" role="dialog" aria-modal="true">
+    <div id="modal-urls-content" class="modal-content" role="document">
+      <div class="modal-header">
+        <h2 id="modal-urls-title">📋 URLs de Cafeterías</h2>
+        <button id="close-urls" class="close" aria-label="Cerrar">&times;</button>
+      </div>
+      <div id="modal-urls-body" class="modal-body">
+        <div class="url-item">
+          <div class="url-text">https://panfitrion.github.io/Panfitrion/cafeterias/breck.html</div>
+          <button class="btn-copy" data-url="https://panfitrion.github.io/Panfitrion/cafeterias/breck.html">Copiar</button>
+        </div>
+        <div class="url-item">
+          <div class="url-text">https://panfitrion.github.io/Panfitrion/cafeterias/amin.html</div>
+          <button class="btn-copy" data-url="https://panfitrion.github.io/Panfitrion/cafeterias/amin.html">Copiar</button>
+        </div>
+        <div class="url-item">
+          <div class="url-text">https://panfitrion.github.io/Panfitrion/cafeterias/zuzu.html</div>
+          <button class="btn-copy" data-url="https://panfitrion.github.io/Panfitrion/cafeterias/zuzu.html">Copiar</button>
+        </div>
+        <div class="url-item">
+          <div class="url-text">https://panfitrion.github.io/Panfitrion/cafeterias/ponke.html</div>
+          <button class="btn-copy" data-url="https://panfitrion.github.io/Panfitrion/cafeterias/ponke.html">Copiar</button>
+        </div>
+        <div class="url-item">
+          <div class="url-text">https://panfitrion.github.io/Panfitrion/cafeterias/cafe-del-sur.html</div>
+          <button class="btn-copy" data-url="https://panfitrion.github.io/Panfitrion/cafeterias/cafe-del-sur.html">Copiar</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -525,6 +618,27 @@
     const modalPedBody = document.getElementById("modal-pedidos-body");
     document.getElementById("close-pedidos").onclick = () => modalPed.classList.remove("show");
 
+    // --- Modal URLs ---
+    const modalUrls = document.getElementById("modal-urls");
+    document.getElementById("close-urls").onclick = () => modalUrls.classList.remove("show");
+    document.getElementById("btn-urls").onclick = () => modalUrls.classList.add("show");
+
+    // Funcionalidad de copiar URLs
+    document.querySelectorAll(".btn-copy").forEach(btn => {
+      btn.onclick = () => {
+        const url = btn.dataset.url;
+        navigator.clipboard.writeText(url).then(() => {
+          const textOriginal = btn.textContent;
+          btn.textContent = "✓ Copiado";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = textOriginal;
+            btn.classList.remove("copied");
+          }, 2000);
+        });
+      };
+    });
+
     function openModalPedidos(nombreCafe, fecha, pedidos) {
       const fechaStr = fecha.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
       modalPedTitle.textContent = `${nombreCafe} — ${fechaStr}`;
@@ -578,6 +692,7 @@
     // Cerrar modal al click fuera
     window.addEventListener("click", (ev) => {
       if (ev.target === modalPed) modalPed.classList.remove("show");
+      if (ev.target === modalUrls) modalUrls.classList.remove("show");
     });
 
     // --- Renderizar todo ---
