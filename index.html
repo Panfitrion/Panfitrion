@@ -2,144 +2,368 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Dashboard de Pedidos — 8 días, navegación semanal</title>
+  <title>Pedidos en Tiempo Real</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    :root{
-      --bg:#f5f7fa;
-      --card:#ffffff;
-      --accent:#007bff;
-      --green-bg:#e9f7ee;
-      --green-border:#28a745;
-      --muted:#666;
+    :root {
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --accent: #007bff;
+      --green-bg: #e9f7ee;
+      --green-border: #28a745;
+      --muted: #666;
+      --shadow: 0 8px 24px rgba(16,24,40,.08);
     }
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); margin:0; padding:1rem; color:#222; }
-    header { display:flex; flex-direction:column; gap:.5rem; align-items:center; margin-bottom:1rem; }
-    h1 { margin:0; font-size:1.25rem; text-align:center; }
-    .sub { color:var(--muted); font-size:.95rem; }
-
-    .nav { display:flex; gap:.5rem; justify-content:center; margin:1rem 0; }
-    .nav button {
-      padding:.6rem 1rem; border:none; border-radius:8px; cursor:pointer;
-      background:var(--accent); color:#fff; font-weight:600;
-      box-shadow:0 4px 10px rgba(0,0,0,.08);
+    
+    * { box-sizing: border-box; }
+    
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: var(--bg);
+      margin: 0;
+      padding: 1.5rem;
+      color: #222;
     }
-    .nav button.secondary { background:#6c757d; }
-
-    /* Contenedor de tarjetas: grid responsive */
-    #contenedor-dias {
-      display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap:1.25rem;
-      align-items:start;
-      padding:0 0.5rem;
+    
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
     }
-
-    /* Tarjetas grandes */
+    
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+      color: var(--accent);
+    }
+    
+    .sub {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 0.5rem;
+    }
+    
+    .container-main {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    /* TARJETA PRINCIPAL (DÍA ACTUAL) */
+    .tarjeta-principal {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 2.5rem;
+      box-shadow: var(--shadow);
+      border-left: 6px solid var(--accent);
+      min-height: 500px;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .tarjeta-principal.con-pedidos {
+      border-left-color: var(--green-border);
+      background: var(--green-bg);
+    }
+    
+    .dia-titulo {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: var(--accent);
+      margin: 0 0 1rem 0;
+      text-transform: capitalize;
+    }
+    
+    .tarjeta-principal.con-pedidos .dia-titulo {
+      color: var(--green-border);
+    }
+    
+    .pedidos-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+    
+    .pedido-item {
+      padding: 1rem;
+      background: rgba(255,255,255,0.7);
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      border-left: 4px solid var(--accent);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .pedido-item:hover {
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(0,0,0,.1);
+    }
+    
+    .pedido-cafeteria {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #111;
+      margin-bottom: 0.5rem;
+    }
+    
+    .pedido-producto {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin: 0.3rem 0;
+    }
+    
+    .pedido-producto span {
+      font-weight: 600;
+      color: #222;
+    }
+    
+    .sin-pedidos {
+      text-align: center;
+      color: var(--muted);
+      padding: 2rem;
+      font-size: 1.1rem;
+    }
+    
+    /* PANEL LATERAL (PRÓXIMOS 3 DÍAS) */
+    .panel-lateral {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    
     .tarjeta-dia {
-      background:var(--card);
-      padding:1.6rem;
-      border-radius:14px;
-      box-shadow:0 8px 24px rgba(16,24,40,.06);
-      cursor:pointer;
-      min-height:220px;
-      display:flex;
-      flex-direction:column;
-      justify-content:flex-start;
-      transition:transform .14s ease, box-shadow .14s ease, border-color .14s ease, background .14s ease;
-      border:3px solid transparent;
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      border-top: 4px solid var(--accent);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
     }
-    .tarjeta-dia:hover { transform:translateY(-6px); box-shadow:0 14px 40px rgba(16,24,40,.12); }
-    .tarjeta-dia.verde { background:var(--green-bg); border-color:var(--green-border); }
-
-    .tarjeta-dia h3 { margin:0 0 .6rem; font-size:1.25rem; text-transform:capitalize; color:#111; }
-    .tarjeta-info { color:var(--muted); font-size:1rem; margin-top:auto; }
-
+    
+    .tarjeta-dia:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,.12);
+    }
+    
+    .tarjeta-dia.con-pedidos {
+      border-top-color: var(--green-border);
+      background: var(--green-bg);
+    }
+    
+    .tarjeta-dia h3 {
+      margin: 0 0 0.8rem 0;
+      font-size: 1.15rem;
+      text-transform: capitalize;
+      color: var(--accent);
+    }
+    
+    .tarjeta-dia.con-pedidos h3 {
+      color: var(--green-border);
+    }
+    
+    .cafeterias-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    
+    .cafeteria-badge {
+      background: rgba(0,123,255,0.1);
+      padding: 0.6rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: var(--accent);
+      border-left: 3px solid var(--accent);
+      font-weight: 600;
+    }
+    
+    .tarjeta-dia.con-pedidos .cafeteria-badge {
+      background: rgba(40,167,69,0.1);
+      color: var(--green-border);
+      border-left-color: var(--green-border);
+    }
+    
+    .tarjeta-vacia {
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 1rem;
+    }
+    
     /* Modales */
-    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1200; align-items:center; justify-content:center; padding:1rem; }
-    .modal.show { display:flex; }
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 1200;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .modal.show {
+      display: flex;
+    }
+    
     .modal-content {
-      background:var(--card); width:96%; max-width:920px; border-radius:12px; padding:1rem 1.25rem;
-      box-shadow:0 18px 50px rgba(2,6,23,.28); max-height:86vh; overflow:auto;
+      background: var(--card);
+      width: 96%;
+      max-width: 800px;
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      max-height: 80vh;
+      overflow-y: auto;
     }
-    .modal-content.green { background:var(--green-bg); }
-    .modal-header { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
-    .modal-header h2 { margin:0; font-size:1.05rem; }
-    .close { cursor:pointer; font-size:1.4rem; padding:.25rem .5rem; border-radius:8px; border:none; background:transparent; }
-
-    .modal-body { margin-top:.75rem; }
-
-    .cafeteria-card {
-      display:flex; justify-content:space-between; align-items:center; gap:.5rem;
-      padding:.75rem 1rem; border-radius:10px; border:1px solid #e0e0e0; margin:.5rem 0; background:#fff; cursor:pointer;
+    
+    .modal-content.green {
+      background: var(--green-bg);
     }
-    .cafeteria-card:hover { background:#fafafa; }
-
-    /* Pedido block: texto más grande y lista de productos */
-    .pedido {
-      padding:.75rem 0;
-      border-bottom:1px solid #eee;
-      font-size:1.15rem; /* texto más grande */
-      line-height:1.35;
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
     }
-    .pedido:last-child { border-bottom:none; }
-    .pedido strong { font-size:1.18rem; display:block; margin-bottom:.35rem; }
-    .pedido .sucursal { color:#333; font-weight:600; margin-bottom:.35rem; }
-    .pedido ul {
-      margin: .25rem 0 0 1.25rem;
+    
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+    
+    .close {
+      cursor: pointer;
+      font-size: 1.8rem;
+      border: none;
+      background: transparent;
+      color: var(--muted);
       padding: 0;
-      list-style-type: disc;
+      line-height: 1;
     }
-    .pedido li {
-      margin-bottom: .35rem;
-      font-size:1.05rem;
-      color:#222;
+    
+    .close:hover {
+      color: #000;
     }
-
-    .muted { color:var(--muted); font-size:.95rem; }
-    .small { font-size:.9rem; color:#444; }
-
-    /* Responsive tweaks */
-    @media (max-width:520px){
-      .tarjeta-dia { padding:1rem; min-height:160px; }
-      #contenedor-dias { grid-template-columns: 1fr; }
-      .pedido { font-size:1rem; }
-      .pedido li { font-size:.98rem; }
+    
+    .modal-body {
+      margin-top: 1rem;
+    }
+    
+    .producto-en-modal {
+      padding: 0.8rem 0;
+      border-bottom: 1px solid rgba(0,0,0,.1);
+      font-size: 1.05rem;
+    }
+    
+    .producto-en-modal:last-child {
+      border-bottom: none;
+    }
+    
+    .producto-en-modal strong {
+      color: #222;
+      font-weight: 600;
+    }
+    
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .container-main {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+      
+      .panel-lateral {
+        flex-direction: row;
+      }
+      
+      .tarjeta-dia {
+        flex: 1;
+      }
+    }
+    
+    @media (max-width: 640px) {
+      body {
+        padding: 1rem;
+      }
+      
+      h1 {
+        font-size: 1.5rem;
+      }
+      
+      .tarjeta-principal {
+        padding: 1.5rem;
+        min-height: auto;
+      }
+      
+      .dia-titulo {
+        font-size: 1.4rem;
+      }
+      
+      .panel-lateral {
+        flex-direction: column;
+      }
+      
+      .tarjeta-dia {
+        flex: none;
+      }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Pedidos — vista semanal ampliada (8 tarjetas grandes, sin domingos)</h1>
-    <div class="sub">Navega por semanas completas; cada tarjeta muestra un día (base + 7 siguientes) y se ocultan domingos</div>
+    <h1>📋 Pedidos </h1>
+    <div class="sub" id="fecha-actual">Sistema de gestión de pedidos de cafeterías</div>
+    
+    <div style="display: flex; gap: 0.8rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap;">
+      <button id="btn-prev" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; background: #6c757d; color: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">← Día anterior</button>
+      <button id="btn-hoy" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; background: var(--accent); color: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">Hoy</button>
+      <button id="btn-next" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; background: #6c757d; color: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">Día siguiente →</button>
+    </div>
   </header>
 
-  <div class="nav" role="navigation" aria-label="Navegación de semanas">
-    <button id="prev">← Semana anterior</button>
-    <button id="today" class="secondary">Hoy</button>
-    <button id="next">Semana siguiente →</button>
-  </div>
+  <main class="container-main">
+    <!-- TARJETA PRINCIPAL DEL DÍA -->
+    <section class="tarjeta-principal" id="tarjeta-hoy">
+      <h2 class="dia-titulo" id="titulo-hoy">Hoy</h2>
+      <div class="pedidos-list" id="pedidos-hoy">
+        <div class="sin-pedidos">No hay pedidos para hoy</div>
+      </div>
+    </section>
 
-  <main>
-    <div id="contenedor-dias" aria-live="polite"></div>
+    <!-- PANEL LATERAL CON PRÓXIMOS 3 DÍAS -->
+    <aside class="panel-lateral">
+      <section class="tarjeta-dia" id="tarjeta-dia-1">
+        <h3 id="titulo-dia-1">Día 1</h3>
+        <div class="cafeterias-list" id="cafeterias-dia-1">
+          <div class="tarjeta-vacia">Sin pedidos</div>
+        </div>
+      </section>
+
+      <section class="tarjeta-dia" id="tarjeta-dia-2">
+        <h3 id="titulo-dia-2">Día 2</h3>
+        <div class="cafeterias-list" id="cafeterias-dia-2">
+          <div class="tarjeta-vacia">Sin pedidos</div>
+        </div>
+      </section>
+
+      <section class="tarjeta-dia" id="tarjeta-dia-3">
+        <h3 id="titulo-dia-3">Día 3</h3>
+        <div class="cafeterias-list" id="cafeterias-dia-3">
+          <div class="tarjeta-vacia">Sin pedidos</div>
+        </div>
+      </section>
+    </aside>
   </main>
 
-  <!-- Modal: cafeterías del día -->
-  <div id="modal-cafeterias" class="modal" role="dialog" aria-modal="true">
-    <div id="modal-cafeterias-content" class="modal-content" role="document">
-      <div class="modal-header">
-        <h2 id="modal-cafeterias-title"></h2>
-        <button id="close-cafeterias" class="close" aria-label="Cerrar">&times;</button>
-      </div>
-      <div id="modal-cafeterias-body" class="modal-body"></div>
-    </div>
-  </div>
-
-  <!-- Modal: pedidos de una cafetería -->
+  <!-- Modal: Detalle de pedidos del día -->
   <div id="modal-pedidos" class="modal" role="dialog" aria-modal="true">
     <div id="modal-pedidos-content" class="modal-content" role="document">
       <div class="modal-header">
-        <h2 id="modal-pedidos-title"></h2>
+        <h2 id="modal-pedidos-title">Detalle de Pedidos</h2>
         <button id="close-pedidos" class="close" aria-label="Cerrar">&times;</button>
       </div>
       <div id="modal-pedidos-body" class="modal-body"></div>
@@ -148,36 +372,42 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // --- Config Supabase (reemplaza si hace falta) ---
+    // --- Config Supabase ---
     const SUPABASE_URL = "https://pqphzdodpassomggthid.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcGh6ZG9kcGFzc29tZ2d0aGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1ODMxMTIsImV4cCI6MjA4MzE1OTExMn0.mQNeavAOItO-wTgfGVac-z91baYxsa6866HpBOZy3nM";
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // --- Utilidades de fecha para columnas DATE (YYYY-MM-DD) ---
+    // --- Utilidades de fecha ---
     function parseDateFromDateString(dateStr) {
       if (!dateStr) return null;
       const parts = String(dateStr).split("-");
       if (parts.length < 3) return new Date(dateStr);
       const y = Number(parts[0]), m = Number(parts[1]) - 1, d = Number(parts[2]);
-      return new Date(y, m, d); // local midnight
+      return new Date(y, m, d);
     }
+
     function resetToLocalMidnight(d) {
       return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     }
-    function sameDay(a,b) {
-      return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+
+    function sameDay(a, b) {
+      return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
     }
-    function addDays(d,n) {
+
+    function addDays(d, n) {
       const x = new Date(d);
       x.setDate(x.getDate() + n);
       return resetToLocalMidnight(x);
     }
-    const opcionesTitulo = { weekday:'long', day:'numeric', month:'long' };
-    function toTitleEsMX(d) { return d.toLocaleDateString('es-MX', opcionesTitulo); }
+
+    function toTitleEsMX(d) {
+      return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+    }
 
     // --- Estado ---
-    let allPedidos = []; // cache de pedidos
-    let baseDate = resetToLocalMidnight(new Date()); // inicio del bloque (por defecto hoy)
+    let allPedidos = [];
+    let currentDate = resetToLocalMidnight(new Date());
+    const todayFixed = resetToLocalMidnight(new Date());
 
     // --- Cargar pedidos desde Supabase ---
     async function loadPedidos() {
@@ -197,170 +427,187 @@
       }
     }
 
-    // --- Construir 8 días a partir de baseDate, saltando domingos ---
-    function buildEightDays(startDate) {
-      const days = [];
-      let cursor = resetToLocalMidnight(startDate);
-      while (days.length < 8) {
-        if (cursor.getDay() !== 0) days.push(new Date(cursor));
-        cursor = addDays(cursor, 1);
-      }
-      return days;
-    }
-
-    // --- Renderizar tarjetas grandes (8) ---
-    function renderEightCards() {
-      const contenedor = document.getElementById("contenedor-dias");
-      const days = buildEightDays(baseDate);
-      contenedor.innerHTML = "";
-
-      days.forEach(day => {
-        const title = toTitleEsMX(day);
-        const tarjeta = document.createElement("div");
-        tarjeta.className = "tarjeta-dia";
-        tarjeta.innerHTML = `<h3>${title}</h3><div class="tarjeta-info muted">Toca para ver cafeterías con pedidos</div>`;
-
-        // Filtrar por fecha_pedido (columna DATE -> "YYYY-MM-DD")
-        const pedidosDia = allPedidos.filter(p => {
-          if (!p.fecha_pedido) return false;
-          const fp = parseDateFromDateString(p.fecha_pedido);
-          return sameDay(fp, day);
-        });
-
-        if (pedidosDia.length > 0) tarjeta.classList.add("verde");
-
-        tarjeta.onclick = () => openCafeteriasModal(day, title, pedidosDia);
-        contenedor.appendChild(tarjeta);
+    // --- Obtener pedidos para un día específico ---
+    function getPedidosPorDia(targetDate) {
+      return allPedidos.filter(p => {
+        if (!p.fecha_pedido) return false;
+        const fp = parseDateFromDateString(p.fecha_pedido);
+        return sameDay(fp, targetDate);
       });
     }
 
-    // --- Modal cafeterías ---
-    const modalCaf = document.getElementById("modal-cafeterias");
-    const modalCafContent = document.getElementById("modal-cafeterias-content");
-    const modalCafTitle = document.getElementById("modal-cafeterias-title");
-    const modalCafBody = document.getElementById("modal-cafeterias-body");
-    document.getElementById("close-cafeterias").onclick = () => modalCaf.classList.remove("show");
-
-    function openCafeteriasModal(dayObj, dayTitle, pedidosDia) {
-      modalCafTitle.textContent = `Cafeterías con pedidos para ${dayTitle}`;
-      modalCafBody.innerHTML = "";
-
-      if (!pedidosDia || pedidosDia.length === 0) {
-        modalCafContent.classList.remove("green");
-        modalCafBody.innerHTML = "<p class='muted'>No hay pedidos para este día.</p>";
-      } else {
-        modalCafContent.classList.add("green");
-        // Agrupar por cafetería (usar cafeterias_id si existe)
-        const byCafe = new Map();
-        pedidosDia.forEach(p => {
-          const key = (p.cafeterias_id !== null && p.cafeterias_id !== undefined) ? String(p.cafeterias_id) : (p.cafeterias?.nombre || "desconocida");
-          if (!byCafe.has(key)) byCafe.set(key, { nombre: p.cafeterias?.nombre || "?", pedidos: [] });
-          byCafe.get(key).pedidos.push(p);
-        });
-
-        byCafe.forEach(({ nombre, pedidos }) => {
-          const total = pedidos.reduce((acc, x) => acc + (Number(x.cantidad) || 0), 0);
-          const card = document.createElement("div");
-          card.className = "cafeteria-card";
-          card.innerHTML = `<div><strong>${nombre}</strong><div class="muted">${pedidos.length} fila(s) en tabla</div></div><div class="muted">Total piezas: ${total}</div>`;
-          card.onclick = () => openPedidosModal(nombre, dayTitle, pedidos);
-          modalCafBody.appendChild(card);
-        });
-      }
-      modalCaf.classList.add("show");
+    // --- Agrupar pedidos por cafetería ---
+    function agruparPorCafeteria(pedidos) {
+      const map = new Map();
+      pedidos.forEach(p => {
+        const nombreCafe = p.cafeterias?.nombre || "Desconocida";
+        if (!map.has(nombreCafe)) {
+          map.set(nombreCafe, []);
+        }
+        map.get(nombreCafe).push(p);
+      });
+      return map;
     }
 
-    // --- Modal pedidos por cafetería (agrupa por fecha_pedido + cafetería + sucursal)
+    // --- Renderizar tarjeta principal (hoy) ---
+    function renderTarjetaPrincipal() {
+      const tarjeta = document.getElementById("tarjeta-hoy");
+      const titulo = document.getElementById("titulo-hoy");
+      const pedidosList = document.getElementById("pedidos-hoy");
+
+      titulo.textContent = toTitleEsMX(currentDate);
+      
+      // Actualizar el subtítulo con la fecha
+      const estaHoy = sameDay(currentDate, todayFixed);
+      const fechaStr = estaHoy ? "Hoy" : `${currentDate.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`;
+      document.getElementById("fecha-actual").textContent = fechaStr;
+
+      const pedidosDia = getPedidosPorDia(currentDate);
+
+      if (pedidosDia.length === 0) {
+        pedidosList.innerHTML = '<div class="sin-pedidos">No hay pedidos para este día</div>';
+        tarjeta.classList.remove("con-pedidos");
+      } else {
+        tarjeta.classList.add("con-pedidos");
+        const cafeterias = agruparPorCafeteria(pedidosDia);
+
+        pedidosList.innerHTML = "";
+        cafeterias.forEach((productos, nombreCafe) => {
+          const badge = document.createElement("div");
+          badge.className = "cafeteria-badge";
+          badge.textContent = nombreCafe;
+          badge.onclick = () => openModalPedidos(nombreCafe, currentDate, productos);
+          badge.style.cursor = "pointer";
+          badge.style.marginBottom = "0.8rem";
+          badge.style.fontSize = "1rem";
+          badge.style.padding = "0.8rem 1.2rem";
+          pedidosList.appendChild(badge);
+        });
+      }
+    }
+
+    // --- Renderizar panel lateral (próximos 3 días) ---
+    function renderPanelLateral() {
+      for (let i = 0; i < 3; i++) {
+        const fecha = addDays(currentDate, i + 1);
+        const tarjeta = document.getElementById(`tarjeta-dia-${i + 1}`);
+        const titulo = document.getElementById(`titulo-dia-${i + 1}`);
+        const cafeteriasList = document.getElementById(`cafeterias-dia-${i + 1}`);
+
+        titulo.textContent = toTitleEsMX(fecha);
+
+        const pedidosDia = getPedidosPorDia(fecha);
+
+        if (pedidosDia.length === 0) {
+          cafeteriasList.innerHTML = '<div class="tarjeta-vacia">Sin pedidos</div>';
+          tarjeta.classList.remove("con-pedidos");
+        } else {
+          tarjeta.classList.add("con-pedidos");
+          const cafeterias = agruparPorCafeteria(pedidosDia);
+
+          cafeteriasList.innerHTML = "";
+          cafeterias.forEach((productos, nombreCafe) => {
+            const badge = document.createElement("div");
+            badge.className = "cafeteria-badge";
+            badge.textContent = nombreCafe;
+            badge.onclick = () => openModalPedidos(nombreCafe, fecha, productos);
+            badge.style.cursor = "pointer";
+            cafeteriasList.appendChild(badge);
+          });
+        }
+      }
+    }
+
+    // --- Modal pedidos ---
     const modalPed = document.getElementById("modal-pedidos");
     const modalPedContent = document.getElementById("modal-pedidos-content");
     const modalPedTitle = document.getElementById("modal-pedidos-title");
     const modalPedBody = document.getElementById("modal-pedidos-body");
     document.getElementById("close-pedidos").onclick = () => modalPed.classList.remove("show");
 
-    function openPedidosModal(nombreCafe, dayTitle, pedidosCafe) {
-      modalPedTitle.textContent = `Pedidos de ${nombreCafe} — ${dayTitle}`;
+    function openModalPedidos(nombreCafe, fecha, pedidos) {
+      const fechaStr = fecha.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+      modalPedTitle.textContent = `${nombreCafe} — ${fechaStr}`;
+      modalPedContent.classList.add("green");
       modalPedBody.innerHTML = "";
 
-      if (!pedidosCafe || pedidosCafe.length === 0) {
-        modalPedContent.classList.remove("green");
-        modalPedBody.innerHTML = "<p class='muted'>Sin pedidos.</p>";
-      } else {
-        modalPedContent.classList.add("green");
+      // Agrupar por sucursal
+      const porSucursal = {};
+      pedidos.forEach(p => {
+        const suc = p.sucursal || "Principal";
+        if (!porSucursal[suc]) {
+          porSucursal[suc] = [];
+        }
+        porSucursal[suc].push(p);
+      });
 
-        // Agrupar por combinación fecha_pedido + cafetería + sucursal
-        const grouped = {};
-        pedidosCafe.forEach(p => {
-          const cafeNombre = p.cafeterias?.nombre || nombreCafe || "desconocida";
-          const key = `${p.fecha_pedido}__${cafeNombre}__${p.sucursal || ''}`;
-          if (!grouped[key]) {
-            grouped[key] = { sucursal: p.sucursal || '', productos: [] };
-          }
-          grouped[key].productos.push({ nombre: p.producto, cantidad: p.cantidad });
+      Object.entries(porSucursal).forEach(([sucursal, prods]) => {
+        const div = document.createElement("div");
+        div.className = "producto-en-modal";
+        
+        // Obtener fecha de envío (fecha_registro) del primer pedido en esta sucursal
+        const fechaEnvio = prods[0]?.fecha_registro ? parseDateFromDateString(prods[0].fecha_registro) : null;
+        const fechaEnvioStr = fechaEnvio ? fechaEnvio.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }) : "—";
+        
+        div.innerHTML = `<strong>Sucursal: ${sucursal}</strong><br><small style="color: var(--muted); font-size: 0.85rem;">Enviado: ${fechaEnvioStr}</small><br>`;
+
+        prods.forEach(p => {
+          const span = document.createElement("div");
+          span.style.marginTop = "0.5rem";
+          span.textContent = `• ${p.producto} x${p.cantidad}`;
+          div.appendChild(span);
         });
 
-        // Renderizar cada bloque: Sucursal + lista de productos (sin mostrar pedido #)
-        Object.values(grouped).forEach(block => {
-          const item = document.createElement("div");
-          item.className = "pedido";
+        modalPedBody.appendChild(div);
+      });
 
-          // Sucursal
-          const sucDiv = document.createElement("div");
-          sucDiv.className = "sucursal";
-          sucDiv.textContent = `Sucursal: ${block.sucursal || '—'}`;
-          item.appendChild(sucDiv);
+      // Agregar fecha del pedido al final
+      const divFecha = document.createElement("div");
+      divFecha.style.marginTop = "1.5rem";
+      divFecha.style.paddingTop = "1rem";
+      divFecha.style.borderTop = "2px solid rgba(0,0,0,.1)";
+      divFecha.style.textAlign = "center";
+      divFecha.style.color = "var(--muted)";
+      divFecha.style.fontSize = "0.9rem";
+      divFecha.innerHTML = `<strong>Fecha del pedido:</strong> ${toTitleEsMX(fecha)}`;
+      modalPedBody.appendChild(divFecha);
 
-          // Lista de productos
-          const ul = document.createElement("ul");
-          // Ordenar alfabéticamente por nombre para consistencia (opcional)
-          block.productos.sort((a,b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
-          block.productos.forEach(prod => {
-            const li = document.createElement("li");
-            li.textContent = `${prod.nombre} x${prod.cantidad}`;
-            ul.appendChild(li);
-          });
-          item.appendChild(ul);
-
-          modalPedBody.appendChild(item);
-        });
-      }
       modalPed.classList.add("show");
     }
 
-    // Cerrar modales al click fuera
+    // Cerrar modal al click fuera
     window.addEventListener("click", (ev) => {
-      if (ev.target === modalCaf) modalCaf.classList.remove("show");
       if (ev.target === modalPed) modalPed.classList.remove("show");
     });
 
-    // --- Navegación semanal: prev/next mueven baseDate por 7 días ---
-    document.getElementById("prev").onclick = () => {
-      baseDate = addDays(baseDate, -7);
-      if (baseDate.getDay() === 0) baseDate = addDays(baseDate, -1);
-      renderEightCards();
-    };
-    document.getElementById("next").onclick = () => {
-      baseDate = addDays(baseDate, 7);
-      if (baseDate.getDay() === 0) baseDate = addDays(baseDate, 1);
-      renderEightCards();
-    };
-    document.getElementById("today").onclick = () => {
-      baseDate = resetToLocalMidnight(new Date());
-      if (baseDate.getDay() === 0) baseDate = addDays(baseDate, 1);
-      renderEightCards();
+    // --- Renderizar todo ---
+    function render() {
+      renderTarjetaPrincipal();
+      renderPanelLateral();
+    }
+
+    // --- Navegación ---
+    document.getElementById("btn-prev").onclick = () => {
+      currentDate = addDays(currentDate, -1);
+      render();
     };
 
-    // --- Realtime: escuchar INSERT/UPDATE/DELETE y recargar cache + render ---
+    document.getElementById("btn-next").onclick = () => {
+      currentDate = addDays(currentDate, 1);
+      render();
+    };
+
+    document.getElementById("btn-hoy").onclick = () => {
+      currentDate = resetToLocalMidnight(new Date());
+      render();
+    };
+
+    // --- Setup realtime ---
     function setupRealtime() {
       client
-        .channel('realtime-pedidos-8days')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, () => {
-          loadPedidos().then(renderEightCards);
-        })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pedidos' }, () => {
-          loadPedidos().then(renderEightCards);
-        })
-        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'pedidos' }, () => {
-          loadPedidos().then(renderEightCards);
+        .channel('realtime-pedidos-rt')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => {
+          loadPedidos().then(render);
         })
         .subscribe();
     }
@@ -368,7 +615,7 @@
     // --- Inicialización ---
     (async function init() {
       await loadPedidos();
-      renderEightCards();
+      render();
       setupRealtime();
     })();
   </script>
