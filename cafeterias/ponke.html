@@ -9,6 +9,54 @@
 body{ font-family:Arial, sans-serif; margin:0; padding:16px; background:var(--bg); color:#222; }
 h1{ color:var(--accent); margin:0 0 12px; font-size:20px; text-align:center; }
 .container{ max-width:980px; margin:0 auto; }
+/* Selector de fechas con tarjetas */
+.fecha-selector {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  overflow-x: auto;
+  padding: 0 0 10px 0;
+}
+
+.fecha-card {
+  flex-shrink: 0;
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: 2px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  min-width: 100px;
+}
+
+.fecha-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.fecha-card.selected {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-weight: bold;
+}
+
+.fecha-card-dia {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.fecha-card.selected .fecha-card-dia {
+  color: rgba(255,255,255,0.8);
+}
+
+.fecha-card-num {
+  font-size: 18px;
+  font-weight: bold;
+}
 .card{ background:var(--card); border-radius:10px; padding:12px; margin-bottom:12px; border:1px solid #eaeaea; }
 .product-row{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .product-row span{ flex:1; font-size:15px; }
@@ -30,11 +78,12 @@ textarea{ width:100%; min-height:64px; resize:vertical; }
 </head>
 <body>
 <div class="container">
-  <h1>Ponke — Formulario de pedidos</h1>
+  <h1>Ponke - pedidos</h1>
 
   <div class="card">
-    <label for="fecha_pedido">Fecha de entrega</label>
-    <input id="fecha_pedido" type="date" />
+    <label style="display:block; margin-bottom: 12px;">Selecciona la fecha de entrega:</label>
+    <div id="fecha_selector" class="fecha-selector"></div>
+    <input id="fecha_pedido" type="date" style="display: none;" />
     <div id="productos" style="margin-top:12px;"></div>
     <label for="notas" style="margin-top:8px; display:block;">Notas (opcional)</label>
     <textarea id="notas"></textarea>
@@ -65,6 +114,71 @@ const PRODUCTOS = [
  "Hogaza","Baguette","Brioche","Tarta Rústica","Scone"
 ];
 const SUCURSALES = ["Principal"]; // si hay más sucursales, agrégalas aquí
+
+/* -------------------------
+   Utilidades de fecha
+   ------------------------- */
+function resetToLocalMidnight(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function addDays(d, n) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return resetToLocalMidnight(x);
+}
+
+function toDateString(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const da = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${da}`;
+}
+
+/* -------------------------
+   Inicializar selector de fechas
+   ------------------------- */
+function initFechaSelector() {
+  const selector = document.getElementById("fecha_selector");
+  const today = resetToLocalMidnight(new Date());
+  
+  selector.innerHTML = "";
+  
+  // Mostrar 5 días a partir de hoy
+  for (let i = 0; i < 5; i++) {
+    const fecha = addDays(today, i);
+    const diaSemana = fecha.toLocaleDateString('es-MX', { weekday: 'short' });
+    const dia = fecha.getDate();
+    
+    const card = document.createElement("div");
+    card.className = "fecha-card";
+    card.dataset.fecha = toDateString(fecha);
+    card.innerHTML = `
+      <div class="fecha-card-dia">${diaSemana}</div>
+      <div class="fecha-card-num">${dia}</div>
+    `;
+    
+    card.onclick = () => selectFecha(card);
+    selector.appendChild(card);
+  }
+  
+  // Seleccionar el primer día por defecto
+  const firstCard = selector.querySelector(".fecha-card");
+  if (firstCard) {
+    selectFecha(firstCard);
+  }
+}
+
+function selectFecha(card) {
+  // Desseleccionar todas
+  document.querySelectorAll(".fecha-card").forEach(c => c.classList.remove("selected"));
+  
+  // Seleccionar la clickeada
+  card.classList.add("selected");
+  
+  // Actualizar el input hidden
+  document.getElementById("fecha_pedido").value = card.dataset.fecha;
+}
 
 /* Construir formulario (inputs vacíos) */
 const productosDiv = document.getElementById("productos");
@@ -247,6 +361,9 @@ async function cargarHistorial(){
     cont.innerHTML = '<div class="empty">Error cargando historial.</div>';
   }
 }
+
+/* Inicializar al cargar */
+initFechaSelector();
 </script>
 </body>
 </html>
