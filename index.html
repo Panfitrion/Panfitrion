@@ -328,6 +328,93 @@
     .btn-copy.copied {
       background: var(--green-border);
     }
+
+    /* Área de impresión */
+    #print-area {
+      display: none;
+      width: 72mm;
+      max-width: 72mm;
+      min-height: auto;
+      font-size: 10pt;
+      color: #000;
+      font-weight: 700;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    #print-area .print-title {
+      text-align: center;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    #print-area .print-date {
+      text-align: center;
+      font-size: 10pt;
+      margin-bottom: 10px;
+    }
+
+    #print-area .print-cafe {
+      margin-top: 8px;
+      font-weight: 700;
+      border-bottom: 1px dashed #555;
+      padding-bottom: 2px;
+    }
+
+    #print-area .print-list {
+      list-style: none;
+      padding: 0;
+      margin: 4px 0 0 0;
+      page-break-inside: avoid;
+    }
+
+    #print-area .print-list li {
+      margin: 2px 0;
+      line-height: 1.2;
+      font-weight: 700;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      page-break-inside: avoid;
+    }
+
+    #print-area .print-note {
+      font-size: 9pt;
+      margin-left: 4px;
+      color: #444;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      page-break-inside: avoid;
+    }
+
+    #print-area .print-empty {
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    @media print {
+      @page {
+        size: 72mm auto;
+        margin: 5mm;
+      }
+      body.printing {
+        background: #fff;
+        margin: 0;
+        padding: 0;
+      }
+      body.printing * {
+        visibility: hidden !important;
+      }
+      body.printing #print-area, body.printing #print-area * {
+        visibility: visible !important;
+      }
+      body.printing #print-area {
+        display: block;
+        position: absolute;
+        inset: 0;
+        padding: 0;
+        margin: 0;
+      }
+    }
     
     /* Responsive */
     @media (max-width: 1024px) {
@@ -382,6 +469,7 @@
       <button id="btn-prev" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; background: #6c757d; color: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">← Día anterior</button>
       <button id="btn-hoy" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; background: var(--accent); color: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">Hoy</button>
       <button id="btn-next" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; background: #6c757d; color: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">Día siguiente →</button>
+      <button id="btn-print" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; background: #198754; color: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🖨️ Imprimir día</button>
       <button id="btn-urls" class="btn-urls">🔗 URLs</button>
     </div>
   </header>
@@ -462,6 +550,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Área oculta para impresión -->
+  <div id="print-area"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -716,6 +807,51 @@
       currentDate = resetToLocalMidnight(new Date());
       render();
     };
+
+    // --- Impresión del día ---
+    const printArea = document.getElementById("print-area");
+    document.getElementById("btn-print").onclick = () => {
+      const pedidosDia = getPedidosPorDia(currentDate);
+      renderPrintArea(pedidosDia);
+      document.body.classList.add("printing");
+      window.print();
+    };
+
+    // Garantizar que el modo impresión se limpia aunque el usuario cierre el diálogo
+    window.addEventListener("afterprint", () => {
+      document.body.classList.remove("printing");
+    });
+    window.addEventListener("focus", () => {
+      document.body.classList.remove("printing");
+    });
+
+    function renderPrintArea(pedidosDia) {
+      const partes = [];
+      partes.push('<div class="print-title">Pedidos del día</div>');
+      partes.push(`<div class="print-date">${toTitleEsMX(currentDate)}</div>`);
+
+      if (pedidosDia.length === 0) {
+        partes.push('<div class="print-empty">No hay pedidos para este día.</div>');
+        printArea.innerHTML = partes.join("");
+        return;
+      }
+
+      const cafeterias = agruparPorCafeteria(pedidosDia);
+      cafeterias.forEach((productos, nombreCafe) => {
+        partes.push(`<div class="print-cafe">${nombreCafe}</div>`);
+        partes.push('<ul class="print-list">');
+        productos.forEach(p => {
+          const suc = p.sucursal ? ` — ${p.sucursal}` : "";
+          partes.push(`<li>${p.producto} x${p.cantidad}${suc}</li>`);
+          if (p.notas) {
+            partes.push(`<div class="print-note">Nota: ${p.notas}</div>`);
+          }
+        });
+        partes.push('</ul>');
+      });
+
+      printArea.innerHTML = partes.join("");
+    }
 
     // --- Setup realtime ---
     function setupRealtime() {
